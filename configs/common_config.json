@@ -11,7 +11,6 @@
 
   "cross_arbitrage_symbol_datas": [],
 
-  // placeholder, import data from symbols.json
   "symbol_name_datas": {
     "1INCH/USDT": {
       "okex": "1INCH-USDT-SWAP",
@@ -133,6 +132,11 @@
       "binance": "DYDXUSDT",
       "ccxt": "DYDX/USDT:USDT"
     },
+    "CFX/USDT": {
+      "okex": "CFX-USDT-SWAP",
+      "binance": "CFXUSDT",
+      "ccxt": "CFX/USDT:USDT"
+    },
     "FIL/USDT": {
       "okex": "FIL-USDT-SWAP",
       "binance": "FILUSDT",
@@ -163,11 +167,6 @@
       "binance": "DOTUSDT",
       "ccxt": "DOT/USDT:USDT"
     },
-    "DYDX/USDT": {
-      "okex": "DYDX-USDT-SWAP",
-      "binance": "DYDXUSDT",
-      "ccxt": "DYDX/USDT:USDT"
-    },
     "EGLD/USDT": {
       "okex": "EGLD-USDT-SWAP",
       "binance": "EGLDUSDT",
@@ -193,20 +192,10 @@
       "binance": "ETCUSDT",
       "ccxt": "ETC/USDT:USDT"
     },
-    "FIL/USDT": {
-      "okex": "FIL-USDT-SWAP",
-      "binance": "FILUSDT",
-      "ccxt": "FIL/USDT:USDT"
-    },
     "FLM/USDT": {
       "okex": "FLM-USDT-SWAP",
       "binance": "FLMUSDT",
       "ccxt": "FLM/USDT:USDT"
-    },
-    "FTM/USDT": {
-      "okex": "FTM-USDT-SWAP",
-      "binance": "FTMUSDT",
-      "ccxt": "FTM/USDT:USDT"
     },
     "GALA/USDT": {
       "okex": "GALA-USDT-SWAP",
@@ -272,11 +261,6 @@
       "okex": "LRC-USDT-SWAP",
       "binance": "LRCUSDT",
       "ccxt": "LRC/USDT:USDT"
-    },
-    "LTC/USDT": {
-      "okex": "LTC-USDT-SWAP",
-      "binance": "LTCUSDT",
-      "ccxt": "LTC/USDT:USDT"
     },
     "MANA/USDT": {
       "okex": "MANA-USDT-SWAP",
