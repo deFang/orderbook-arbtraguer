@@ -1,0 +1,463 @@
+{
+  "env": "dev",
+  "debug": true,
+  "log": {
+    "level": "info"
+  },
+  "redis": {
+    "url": "redis://localhost:6379/1",
+    "orderbook_stream": "orderbook"
+  },
+
+  "cross_arbitrage_symbol_datas": [],
+
+  // placeholder, import data from symbols.json
+  "symbol_name_datas": {
+    "1INCH/USDT": {
+      "okex": "1INCH-USDT-SWAP",
+      "binance": "1INCHUSDT",
+      "ccxt": "1INCH/USDT:USDT"
+    },
+    "AAVE/USDT": {
+      "okex": "AAVE-USDT-SWAP",
+      "binance": "AAVEUSDT",
+      "ccxt": "AAVE/USDT:USDT"
+    },
+    "ADA/USDT": {
+      "okex": "ADA-USDT-SWAP",
+      "binance": "ADAUSDT",
+      "ccxt": "ADA/USDT:USDT"
+    },
+    "ALGO/USDT": {
+      "okex": "ALGO-USDT-SWAP",
+      "binance": "ALGOUSDT",
+      "ccxt": "ALGO/USDT:USDT"
+    },
+    "ALPHA/USDT": {
+      "okex": "ALPHA-USDT-SWAP",
+      "binance": "ALPHAUSDT",
+      "ccxt": "ALPHA/USDT:USDT"
+    },
+    "ANT/USDT": {
+      "okex": "ANT-USDT-SWAP",
+      "binance": "ANTUSDT",
+      "ccxt": "ANT/USDT:USDT"
+    },
+    "APE/USDT": {
+      "okex": "APE-USDT-SWAP",
+      "binance": "APEUSDT",
+      "ccxt": "APE/USDT:USDT"
+    },
+    "API3/USDT": {
+      "okex": "API3-USDT-SWAP",
+      "binance": "API3USDT",
+      "ccxt": "API3/USDT:USDT"
+    },
+    "APT/USDT": {
+      "okex": "APT-USDT-SWAP",
+      "binance": "APTUSDT",
+      "ccxt": "APT/USDT:USDT"
+    },
+    "ATOM/USDT": {
+      "okex": "ATOM-USDT-SWAP",
+      "binance": "ATOMUSDT",
+      "ccxt": "ATOM/USDT:USDT"
+    },
+    "AVAX/USDT": {
+      "okex": "AVAX-USDT-SWAP",
+      "binance": "AVAXUSDT",
+      "ccxt": "AVAX/USDT:USDT"
+    },
+    "AXS/USDT": {
+      "okex": "AXS-USDT-SWAP",
+      "binance": "AXSUSDT",
+      "ccxt": "AXS/USDT:USDT"
+    },
+    "BAL/USDT": {
+      "okex": "BAL-USDT-SWAP",
+      "binance": "BALUSDT",
+      "ccxt": "BAL/USDT:USDT"
+    },
+    "BAND/USDT": {
+      "okex": "BAND-USDT-SWAP",
+      "binance": "BANDUSDT",
+      "ccxt": "BAND/USDT:USDT"
+    },
+    "BAT/USDT": {
+      "okex": "BAT-USDT-SWAP",
+      "binance": "BATUSDT",
+      "ccxt": "BAT/USDT:USDT"
+    },
+    "BCH/USDT": {
+      "okex": "BCH-USDT-SWAP",
+      "binance": "BCHUSDT",
+      "ccxt": "BCH/USDT:USDT"
+    },
+    "BNB/USDT": {
+      "okex": "BNB-USDT-SWAP",
+      "binance": "BNBUSDT",
+      "ccxt": "BNB/USDT:USDT"
+    },
+    "BTC/USDT": {
+      "okex": "BTC-USDT-SWAP",
+      "binance": "BTCUSDT",
+      "ccxt": "BTC/USDT:USDT"
+    },
+    "CELO/USDT": {
+      "okex": "CELO-USDT-SWAP",
+      "binance": "CELOUSDT",
+      "ccxt": "CELO/USDT:USDT"
+    },
+    "CHZ/USDT": {
+      "okex": "CHZ-USDT-SWAP",
+      "binance": "CHZUSDT",
+      "ccxt": "CHZ/USDT:USDT"
+    },
+    "ETH/USDT": {
+      "okex": "ETH-USDT-SWAP",
+      "binance": "ETHUSDT",
+      "ccxt": "ETH/USDT:USDT"
+    },
+    "FTM/USDT": {
+      "okex": "FTM-USDT-SWAP",
+      "binance": "FTMUSDT",
+      "ccxt": "FTM/USDT:USDT"
+    },
+    "LTC/USDT": {
+      "okex": "LTC-USDT-SWAP",
+      "binance": "LTCUSDT",
+      "ccxt": "LTC/USDT:USDT"
+    },
+    "DYDX/USDT": {
+      "okex": "DYDX-USDT-SWAP",
+      "binance": "DYDXUSDT",
+      "ccxt": "DYDX/USDT:USDT"
+    },
+    "FIL/USDT": {
+      "okex": "FIL-USDT-SWAP",
+      "binance": "FILUSDT",
+      "ccxt": "FIL/USDT:USDT"
+    },
+    "COMP/USDT": {
+      "okex": "COMP-USDT-SWAP",
+      "binance": "COMPUSDT",
+      "ccxt": "COMP/USDT:USDT"
+    },
+    "CRV/USDT": {
+      "okex": "CRV-USDT-SWAP",
+      "binance": "CRVUSDT",
+      "ccxt": "CRV/USDT:USDT"
+    },
+    "DASH/USDT": {
+      "okex": "DASH-USDT-SWAP",
+      "binance": "DASHUSDT",
+      "ccxt": "DASH/USDT:USDT"
+    },
+    "DOGE/USDT": {
+      "okex": "DOGE-USDT-SWAP",
+      "binance": "DOGEUSDT",
+      "ccxt": "DOGE/USDT:USDT"
+    },
+    "DOT/USDT": {
+      "okex": "DOT-USDT-SWAP",
+      "binance": "DOTUSDT",
+      "ccxt": "DOT/USDT:USDT"
+    },
+    "DYDX/USDT": {
+      "okex": "DYDX-USDT-SWAP",
+      "binance": "DYDXUSDT",
+      "ccxt": "DYDX/USDT:USDT"
+    },
+    "EGLD/USDT": {
+      "okex": "EGLD-USDT-SWAP",
+      "binance": "EGLDUSDT",
+      "ccxt": "EGLD/USDT:USDT"
+    },
+    "ENJ/USDT": {
+      "okex": "ENJ-USDT-SWAP",
+      "binance": "ENJUSDT",
+      "ccxt": "ENJ/USDT:USDT"
+    },
+    "ENS/USDT": {
+      "okex": "ENS-USDT-SWAP",
+      "binance": "ENSUSDT",
+      "ccxt": "ENS/USDT:USDT"
+    },
+    "EOS/USDT": {
+      "okex": "EOS-USDT-SWAP",
+      "binance": "EOSUSDT",
+      "ccxt": "EOS/USDT:USDT"
+    },
+    "ETC/USDT": {
+      "okex": "ETC-USDT-SWAP",
+      "binance": "ETCUSDT",
+      "ccxt": "ETC/USDT:USDT"
+    },
+    "FIL/USDT": {
+      "okex": "FIL-USDT-SWAP",
+      "binance": "FILUSDT",
+      "ccxt": "FIL/USDT:USDT"
+    },
+    "FLM/USDT": {
+      "okex": "FLM-USDT-SWAP",
+      "binance": "FLMUSDT",
+      "ccxt": "FLM/USDT:USDT"
+    },
+    "FTM/USDT": {
+      "okex": "FTM-USDT-SWAP",
+      "binance": "FTMUSDT",
+      "ccxt": "FTM/USDT:USDT"
+    },
+    "GALA/USDT": {
+      "okex": "GALA-USDT-SWAP",
+      "binance": "GALAUSDT",
+      "ccxt": "GALA/USDT:USDT"
+    },
+    "GMT/USDT": {
+      "okex": "GMT-USDT-SWAP",
+      "binance": "GMTUSDT",
+      "ccxt": "GMT/USDT:USDT"
+    },
+    "GRT/USDT": {
+      "okex": "GRT-USDT-SWAP",
+      "binance": "GRTUSDT",
+      "ccxt": "GRT/USDT:USDT"
+    },
+    "ICP/USDT": {
+      "okex": "ICP-USDT-SWAP",
+      "binance": "ICPUSDT",
+      "ccxt": "ICP/USDT:USDT"
+    },
+    "IMX/USDT": {
+      "okex": "IMX-USDT-SWAP",
+      "binance": "IMXUSDT",
+      "ccxt": "IMX/USDT:USDT"
+    },
+    "IOST/USDT": {
+      "okex": "IOST-USDT-SWAP",
+      "binance": "IOSTUSDT",
+      "ccxt": "IOST/USDT:USDT"
+    },
+    "IOTA/USDT": {
+      "okex": "IOTA-USDT-SWAP",
+      "binance": "IOTAUSDT",
+      "ccxt": "IOTA/USDT:USDT"
+    },
+    "KLAY/USDT": {
+      "okex": "KLAY-USDT-SWAP",
+      "binance": "KLAYUSDT",
+      "ccxt": "KLAY/USDT:USDT"
+    },
+    "KNC/USDT": {
+      "okex": "KNC-USDT-SWAP",
+      "binance": "KNCUSDT",
+      "ccxt": "KNC/USDT:USDT"
+    },
+    "KSM/USDT": {
+      "okex": "KSM-USDT-SWAP",
+      "binance": "KSMUSDT",
+      "ccxt": "KSM/USDT:USDT"
+    },
+    "LINK/USDT": {
+      "okex": "LINK-USDT-SWAP",
+      "binance": "LINKUSDT",
+      "ccxt": "LINK/USDT:USDT"
+    },
+    "LPT/USDT": {
+      "okex": "LPT-USDT-SWAP",
+      "binance": "LPTUSDT",
+      "ccxt": "LPT/USDT:USDT"
+    },
+    "LRC/USDT": {
+      "okex": "LRC-USDT-SWAP",
+      "binance": "LRCUSDT",
+      "ccxt": "LRC/USDT:USDT"
+    },
+    "LTC/USDT": {
+      "okex": "LTC-USDT-SWAP",
+      "binance": "LTCUSDT",
+      "ccxt": "LTC/USDT:USDT"
+    },
+    "MANA/USDT": {
+      "okex": "MANA-USDT-SWAP",
+      "binance": "MANAUSDT",
+      "ccxt": "MANA/USDT:USDT"
+    },
+    "MASK/USDT": {
+      "okex": "MASK-USDT-SWAP",
+      "binance": "MASKUSDT",
+      "ccxt": "MASK/USDT:USDT"
+    },
+    "MATIC/USDT": {
+      "okex": "MATIC-USDT-SWAP",
+      "binance": "MATICUSDT",
+      "ccxt": "MATIC/USDT:USDT"
+    },
+    "MKR/USDT": {
+      "okex": "MKR-USDT-SWAP",
+      "binance": "MKRUSDT",
+      "ccxt": "MKR/USDT:USDT"
+    },
+    "NEAR/USDT": {
+      "okex": "NEAR-USDT-SWAP",
+      "binance": "NEARUSDT",
+      "ccxt": "NEAR/USDT:USDT"
+    },
+    "NEO/USDT": {
+      "okex": "NEO-USDT-SWAP",
+      "binance": "NEOUSDT",
+      "ccxt": "NEO/USDT:USDT"
+    },
+    "OMG/USDT": {
+      "okex": "OMG-USDT-SWAP",
+      "binance": "OMGUSDT",
+      "ccxt": "OMG/USDT:USDT"
+    },
+    "ONT/USDT": {
+      "okex": "ONT-USDT-SWAP",
+      "binance": "ONTUSDT",
+      "ccxt": "ONT/USDT:USDT"
+    },
+    "OP/USDT": {
+      "okex": "OP-USDT-SWAP",
+      "binance": "OPUSDT",
+      "ccxt": "OP/USDT:USDT"
+    },
+    "PEOPLE/USDT": {
+      "okex": "PEOPLE-USDT-SWAP",
+      "binance": "PEOPLEUSDT",
+      "ccxt": "PEOPLE/USDT:USDT"
+    },
+    "QTUM/USDT": {
+      "okex": "QTUM-USDT-SWAP",
+      "binance": "QTUMUSDT",
+      "ccxt": "QTUM/USDT:USDT"
+    },
+    "REN/USDT": {
+      "okex": "REN-USDT-SWAP",
+      "binance": "RENUSDT",
+      "ccxt": "REN/USDT:USDT"
+    },
+    "RSR/USDT": {
+      "okex": "RSR-USDT-SWAP",
+      "binance": "RSRUSDT",
+      "ccxt": "RSR/USDT:USDT"
+    },
+    "RVN/USDT": {
+      "okex": "RVN-USDT-SWAP",
+      "binance": "RVNUSDT",
+      "ccxt": "RVN/USDT:USDT"
+    },
+    "SAND/USDT": {
+      "okex": "SAND-USDT-SWAP",
+      "binance": "SANDUSDT",
+      "ccxt": "SAND/USDT:USDT"
+    },
+    "SNX/USDT": {
+      "okex": "SNX-USDT-SWAP",
+      "binance": "SNXUSDT",
+      "ccxt": "SNX/USDT:USDT"
+    },
+    "SOL/USDT": {
+      "okex": "SOL-USDT-SWAP",
+      "binance": "SOLUSDT",
+      "ccxt": "SOL/USDT:USDT"
+    },
+    "STORJ/USDT": {
+      "okex": "STORJ-USDT-SWAP",
+      "binance": "STORJUSDT",
+      "ccxt": "STORJ/USDT:USDT"
+    },
+    "SUSHI/USDT": {
+      "okex": "SUSHI-USDT-SWAP",
+      "binance": "SUSHIUSDT",
+      "ccxt": "SUSHI/USDT:USDT"
+    },
+    "THETA/USDT": {
+      "okex": "THETA-USDT-SWAP",
+      "binance": "THETAUSDT",
+      "ccxt": "THETA/USDT:USDT"
+    },
+    "TRB/USDT": {
+      "okex": "TRB-USDT-SWAP",
+      "binance": "TRBUSDT",
+      "ccxt": "TRB/USDT:USDT"
+    },
+    "TRX/USDT": {
+      "okex": "TRX-USDT-SWAP",
+      "binance": "TRXUSDT",
+      "ccxt": "TRX/USDT:USDT"
+    },
+    "UNI/USDT": {
+      "okex": "UNI-USDT-SWAP",
+      "binance": "UNIUSDT",
+      "ccxt": "UNI/USDT:USDT"
+    },
+    "WAVES/USDT": {
+      "okex": "WAVES-USDT-SWAP",
+      "binance": "WAVESUSDT",
+      "ccxt": "WAVES/USDT:USDT"
+    },
+    "XLM/USDT": {
+      "okex": "XLM-USDT-SWAP",
+      "binance": "XLMUSDT",
+      "ccxt": "XLM/USDT:USDT"
+    },
+    "XMR/USDT": {
+      "okex": "XMR-USDT-SWAP",
+      "binance": "XMRUSDT",
+      "ccxt": "XMR/USDT:USDT"
+    },
+    "XRP/USDT": {
+      "okex": "XRP-USDT-SWAP",
+      "binance": "XRPUSDT",
+      "ccxt": "XRP/USDT:USDT"
+    },
+    "XTZ/USDT": {
+      "okex": "XTZ-USDT-SWAP",
+      "binance": "XTZUSDT",
+      "ccxt": "XTZ/USDT:USDT"
+    },
+    "YFI/USDT": {
+      "okex": "YFI-USDT-SWAP",
+      "binance": "YFIUSDT",
+      "ccxt": "YFI/USDT:USDT"
+    },
+    "ZEC/USDT": {
+      "okex": "ZEC-USDT-SWAP",
+      "binance": "ZECUSDT",
+      "ccxt": "ZEC/USDT:USDT"
+    },
+    "ZEN/USDT": {
+      "okex": "ZEN-USDT-SWAP",
+      "binance": "ZENUSDT",
+      "ccxt": "ZEN/USDT:USDT"
+    },
+    "ZIL/USDT": {
+      "okex": "ZIL-USDT-SWAP",
+      "binance": "ZILUSDT",
+      "ccxt": "ZIL/USDT:USDT"
+    },
+    "ZRX/USDT": {
+      "okex": "ZRX-USDT-SWAP",
+      "binance": "ZRXUSDT",
+      "ccxt": "ZRX/USDT:USDT"
+    }
+  },
+  "network": {
+    "http_proxy": "",
+    "https_proxy": ""
+  },
+  "exchanges": {
+    "binance": {
+      "api_key": "",
+      "secret": "",
+      "password": ""
+    },
+    "okex": {
+      "api_key": "",
+      "secret": "",
+      "password": ""
+    }
+  }
+}

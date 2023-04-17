@@ -136,3 +136,17 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+
+# local config
+*.prod.json
+*.dev.json
+
+# data dir
+data/
+
+# data dir
+logs/
+
+# test notebook
+*.ipynb

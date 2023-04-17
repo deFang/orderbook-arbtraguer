@@ -1,0 +1,29 @@
+{
+  "exchange_pair_names": ["binance", "okex"],
+  "default_makeonly_exchange_name": "okex",
+  "default_increase_position_threshold": 0.0012,
+  "default_decrease_position_threshold": -0.0004,
+  "default_cancel_increase_positio_ratio": 0.75,
+  "default_cancel_decrease_positio_ratio": 0.25,
+  "max_used_margin": 0.9,
+  "default_max_notional_per_order": 20,
+  "default_max_notional_per_symbol": 100,
+  "default_cancel_position_timeout": 120,
+  "symbol_leverage": 2,
+  "cross_arbitrage_symbol_datas": [
+    {
+      "symbol_name": "APT/USDT",
+      "makeonly_exchange_name": "okex",
+      "makeonly_long_threshold_data": {
+        "increase_position_threshold": 0.0012,
+        "cancel_increase_position_threshold": 0.0009,
+        "decrease_position_threshold": 0.0,
+        "cancel_decrease_position_threshold": 0.0003
+      },
+      "makeonly_short_threshold_data": {
+        "increase_position_threshold": -0.0012,
+        "decrease_position_threshold": 0.0
+      }
+    }
+  ]
+}

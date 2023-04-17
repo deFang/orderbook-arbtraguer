@@ -1,0 +1,17 @@
+{
+  "env": "dev",
+  "debug": false,
+  "log": {
+    "level": "info"
+  },
+  "redis": {
+    "url": "redis://localhost:6379/3"
+  },
+  "enabled_symbols": ["BTC/USDT", "ETH/USDT"],
+  "symbols": {},
+  "network": {
+    "http_proxy": "http://localhost:1081",
+    "https_proxy": "http://localhost:1081"
+  },
+  "exchanges": {}
+}

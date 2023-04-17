@@ -1,0 +1,39 @@
+{
+  "symbols": {
+    "BTC/USDT": {
+      "okex": "BTC-USDT-SWAP",
+      "binance": "BTCUSDT",
+      "ccxt": "BTC/USDT:USDT"
+    },
+    "ETH/USDT": {
+      "okex": "ETH-USDT-SWAP",
+      "binance": "ETHUSDT",
+      "ccxt": "ETH/USDT:USDT"
+    },
+    "AAVE/USDT": {
+      "okex": "AAVE-USDT-SWAP",
+      "binance": "AAVEUSDT",
+      "ccxt": "AAVE/USDT:USDT"
+    },
+    "ALGO/USDT": {
+      "okex": "ALGO-USDT-SWAP",
+      "binance": "ALGOUSDT",
+      "ccxt": "ALGO/USDT:USDT"
+    },
+    "ALPHA/USDT": {
+      "okex": "ALPHA-USDT-SWAP",
+      "binance": "ALPHAUSDT",
+      "ccxt": "ALPHA/USDT:USDT"
+    },
+    "ANT/USDT": {
+      "okex": "ANT-USDT-SWAP",
+      "binance": "ANTUSDT",
+      "ccxt": "ANT/USDT:USDT"
+    },
+    "APE/USDT": {
+      "okex": "APE-USDT-SWAP",
+      "binance": "APEUSDT",
+      "ccxt": "APE/USDT:USDT"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "cross-arbitrage"
+version = "0.0.1"
+description = ""
+authors = ["Shi Bin <bin.shi@antalpha.com>"]
+readme = "README.md"
+packages = [{ include = "./cross_arbitrage/**/*.py" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+click = "^8.1.3"
+ccxt = "^3.0.45"
+orjson = "^3.8.9"
+typing-extensions = "^4.5.0"
+websocket-client = "^1.5.1"
+redis = "^4.5.4"
+flask = "^2.2.3"
+pydantic = "^1.10.7"
+pytest = "^7.2.2"
+
+[tool.poetry.dev-dependencies]
+autopep8 = "^1.5.7"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
