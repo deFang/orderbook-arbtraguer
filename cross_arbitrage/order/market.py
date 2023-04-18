@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
 
+
 class SimpleMarginInfo(BaseModel):
     used: Decimal
     available: Decimal
@@ -14,12 +15,12 @@ class SimpleMarginInfo(BaseModel):
 
 
 class DetailMarginInfo(BaseModel):
-    total_maint_margin: Decimal
+    total_maint_margin: Decimal | None
     total_margin_balance: Decimal
     total_wallet_balance: Decimal
     available_balance: Decimal
-    position_init_margin: Decimal
-    open_order_margin: Decimal
+    position_init_margin: Decimal | None
+    open_order_margin: Decimal | None
     total_used_margin: Decimal
     unrealized_pnl: Decimal
 
