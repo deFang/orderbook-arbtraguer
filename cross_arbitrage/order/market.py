@@ -2,8 +2,70 @@ from decimal import Decimal
 from typing import Literal, Tuple
 
 import ccxt
+from pydantic import BaseModel
 
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
+
+class SimpleMarginInfo(BaseModel):
+    used: Decimal
+    available: Decimal
+    total_wallet: Decimal
+    total_margin: Decimal
+
+
+class DetailMarginInfo(BaseModel):
+    total_maint_margin: Decimal
+    total_margin_balance: Decimal
+    total_wallet_balance: Decimal
+    available_balance: Decimal
+    position_init_margin: Decimal
+    open_order_margin: Decimal
+    total_used_margin: Decimal
+    unrealized_pnl: Decimal
+
+
+class MarginInfo(BaseModel):
+    simple: SimpleMarginInfo
+    detail: DetailMarginInfo
+
+
+def get_margin_info(exchange: ccxt.Exchange) -> MarginInfo:
+    match exchange:
+        case ccxt.okex():
+            # TODO
+            pass
+        case ccxt.binanceusdm():
+            res = exchange.fetch_balance()
+
+            position_init_margin = Decimal(
+                res['info']['totalPositionInitialMargin'])
+            open_order_margin = Decimal(
+                res['info']['totalOpenOrderInitialMargin'])
+
+            detail = DetailMarginInfo(
+                total_position_maint_margin=Decimal(
+                    res['info']['totalMaintMargin']),
+                total_margin_balance=Decimal(
+                    res['info']['totalMarginBalance']),
+                total_wallet_balance=Decimal(
+                    res['info']['totalWalletBalance']),
+                total_used_margin=Decimal(res['info']['totalInitialMargin']),
+                available_balance=Decimal(res['info']['availableBalance']),
+                position_init_margin=position_init_margin,
+                open_order_margin=open_order_margin,
+                unrealized_pnl=Decimal(res['info']['totalUnrealizedProfit']),
+            )
+            simple = SimpleMarginInfo(
+                used=detail.total_used_margin,
+                position_maint=detail.total_maint_margin,
+                available=detail.available_balance,
+                total_wallet=detail.total_wallet_balance,
+                total_margin=detail.total_margin_balance,
+            )
+            return MarginInfo(simple=simple, detail=detail)
+        case _:
+            raise ccxt.ExchangeNotAvailable(
+                f'get margin info not support exchange: {type(exchange)}')
 
 
 def place_order(exchange: ccxt.Exchange,
