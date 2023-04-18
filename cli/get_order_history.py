@@ -121,11 +121,11 @@ def gen_order_csv(exchange):
                         .astimezone(timezone.utc)
                         .strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                         "type": o["ordType"],
-                        "side": o["side"],
+                        "side": o["side"].upper(),
                         "price": o["px"],
                         "avgPrice": o["avgPx"],
-                        "origQty": o["sz"],
-                        "executedQty": o["accFillSz"],
+                        "origQty": str(Decimal(str(o["sz"])) * Decimal(str(symbol_info['contractSize']))),
+                        "executedQty": str(Decimal(str(o["accFillSz"])) * Decimal(str(symbol_info['contractSize']))),
                         "cost": str(
                             Decimal(o["accFillSz"])
                             * Decimal(o["fillPx"])

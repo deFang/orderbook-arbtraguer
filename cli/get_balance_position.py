@@ -13,9 +13,9 @@ def print_balance(exchange):
     balance1 = exchange.fetch_balance()
     match exchange:
         case ccxt.okex():
-            print(f"--- {balance1['info']['data'][0]['details'][0]['eq']}")
+            print(f"--- okex    eq={balance1['info']['data'][0]['details'][0]['eq']} wallet={balance1['info']['data'][0]['details'][0]['cashBal']}")
         case ccxt.binanceusdm():
-            print(f"--- {balance1['info']['totalMarginBalance']}")
+            print(f"--- binance eq={balance1['info']['totalMarginBalance']} wallet={balance1['info']['totalWalletBalance']}")
 
     print(f'{exchange.ex_name} total',
         {
