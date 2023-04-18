@@ -57,7 +57,7 @@ class Order(BaseModel):
 
 def normalize_okex_order(info) -> Order:
     _type = OrderType.market
-    if info["ordType"] == "limit":
+    if info["ordType"] in ["limit", "post_only"]:
         _type = OrderType.limit
 
     side = OrderSide.buy
