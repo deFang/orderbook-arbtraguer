@@ -22,6 +22,7 @@ class OrderSignal(NamedTuple):
     maker_qty: Decimal
     taker_side: str
     taker_exchange: str
+    taker_price: Decimal
     # taker_expect_price: Decimal
     orderbook_ts: int
     cancel_order_threshold: float
@@ -125,6 +126,7 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     maker_qty= qty,
                     taker_side='buy',
                     taker_exchange=taker_exchange,
+                    taker_price=Decimal(taker_ob['asks'][0][0]),
                     orderbook_ts=maker_ob['ts'],
                     cancel_order_threshold=high_cancel_threshold,
                     maker_position=maker_symbol_position,
@@ -145,6 +147,7 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     maker_qty=qty,
                     taker_side='sell',
                     taker_exchange=taker_exchange,
+                    taker_price=Decimal(taker_ob['bids'][0][0]),
                     orderbook_ts=maker_ob['ts'],
                     cancel_order_threshold=low_cancel_threshold,
                     maker_position=maker_symbol_position,
