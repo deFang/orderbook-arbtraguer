@@ -12,6 +12,16 @@
   "cross_arbitrage_symbol_datas": [],
 
   "symbol_name_datas": {
+    "ARB/USDT": {
+      "okex": "ARB-USDT-SWAP",
+      "binance": "ARBUSDT",
+      "ccxt": "ARB/USDT:USDT"
+    },
+    "LDO/USDT": {
+      "okex": "LDO-USDT-SWAP",
+      "binance": "LDOUSDT",
+      "ccxt": "LDO/USDT:USDT"
+    },
     "1INCH/USDT": {
       "okex": "1INCH-USDT-SWAP",
       "binance": "1INCHUSDT",
