@@ -101,15 +101,15 @@ def main(env):
         p1 = d1[symbol]
         p2 = d2.get(symbol)
         if p2:
-            print(f"binance {p1['symbol']:<20} {round(p1['contracts'] *  p1['contractSize'],2):<10} {round(p1['notional'],2):<10} {p1['side']:<5} {p1['unrealizedPnl']}")
-            print(f"okex    {p2['symbol']:<20} {round(p2['contracts'] *  p2['contractSize'],2):<10} {round(p2['notional'],2):<10} {p2['side']:<5} {p2['unrealizedPnl']}")
+            print(f"binance {p1['symbol']:<20} {round(p1['contracts'] *  p1['contractSize'],2):<10} {round(p1['notional'],2):<10} {round(p1['entryPrice'],4):<10} {p1['side']:<5} {p1['unrealizedPnl']}")
+            print(f"okex    {p2['symbol']:<20} {round(p2['contracts'] *  p2['contractSize'],2):<10} {round(p2['notional'],2):<10} {round(p2['entryPrice'],4):<10} {p2['side']:<5} {p2['unrealizedPnl']}")
         else:
-            print(f"- binance {p1['symbol']} {p1['contracts'] *  p1['contractSize']} {p1['notional']} {p1['side']} {p1['unrealizedPnl']}")
+            print(f"- binance {p1['symbol']} {p1['contracts'] *  p1['contractSize']} {p1['notional']} {round(p1['entryPrice'],4):<10} {p1['side']} {p1['unrealizedPnl']}")
 
     for symbol in d2.keys():
         p2 = d2[symbol]
         if not d1.get(symbol):
-            print(f"- okex {p2['symbol']} {p2['contracts'] *  p2['contractSize']} {p2['notional']} {p2['side']} {p2['unrealizedPnl']}")
+            print(f"- okex {p2['symbol']} {p2['contracts'] *  p2['contractSize']} {p2['notional']} {round(p2['entryPrice'],4):<10} {p2['side']} {p2['unrealizedPnl']}")
 
 
 if __name__ == "__main__":

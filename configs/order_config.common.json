@@ -1,4 +1,6 @@
 {
+  "debug": false,
+  "dry_run": false,
   "exchange_pair_names": ["binance", "okex"],
   "default_makeonly_exchange_name": "okex",
   "default_increase_position_threshold": 0.0012,
