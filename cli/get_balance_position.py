@@ -11,6 +11,12 @@ from cross_arbitrage.utils.symbol_mapping import init_symbol_mapping_from_file
 
 def print_balance(exchange):
     balance1 = exchange.fetch_balance()
+    match exchange:
+        case ccxt.okex():
+            print(f"--- {balance1['total']['USDT']}")
+        case ccxt.binanceusdm():
+            print(f"--- {balance1['info']['totalMarginBalance']}")
+
     print(f'{exchange.ex_name} total',
         {
             coin: balance
