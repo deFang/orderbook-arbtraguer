@@ -13,7 +13,7 @@ import redis
 
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.utils.exchange import create_exchange
-from cross_arbitrage.utils.order import get_order_qty
+from cross_arbitrage.utils.order import get_order_qty, order_mode_is_pending, order_mode_is_reduce_only
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
 from .config import OrderConfig
 from .order_book import fetch_orderbooks_from_redis, get_signal_from_orderbooks
@@ -97,18 +97,26 @@ def order_loop(ctx: CancelContext, config: OrderConfig, exchanges: Dict[str, ccx
                         f"==> fetch orderbook count: {ob_count}, time: {time.time() - st:.3f}s")
                     ob_count = 0
 
-            # is margin rate is not satisfied, ignore spawn thread
-            order_qty = get_order_qty(signal, rc, config)
-            if order_qty == Decimal(0):
-                # logging.info(f"order_qty is 0, skip place order: {signal}")
-                if config.debug:
-                    logging.info(f"order_qty is 0, skip place order for {signal.symbol}")
+            if not rc.sismember('order:signal:processing', symbol):
+                # order mode is pending
+                if order_mode_is_pending(ctx):
+                    logging.info(f"order mode is pending, ignore signal {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price} {signal.is_reduce_position}")
+                    return
 
-                if rc.sismember('order:signal:processing', symbol):
-                    rc.srem('order:signal:processing', symbol)
+                # order mode is reduce only, ignore open orders
+                if order_mode_is_reduce_only(ctx) and (not signal.is_reduce_position):
+                    logging.info(f"order mode is reduce only, ignore signal {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price} {signal.is_reduce_position}")
+                    return
+
+                # is margin rate is not satisfied, ignore spawn thread
+                order_qty = get_order_qty(signal, rc, config)
+                if order_qty == Decimal(0):
+                    # logging.info(f"order_qty is 0, skip place order: {signal}")
+                    if config.debug:
+                        logging.info(f"order_qty is 0, skip place order for {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price}")
                 continue
 
-            if not rc.sismember('order:signal:processing', symbol):
+                # add symbol to processing
                 logging.info(f"==> signal: {signal}")
                 rc.sadd('order:signal:processing', symbol)
 

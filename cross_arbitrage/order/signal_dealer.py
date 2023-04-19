@@ -44,10 +44,11 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
 
     # symbol_config = config.get_symbol_data_by_makeonly(symbol, signal.maker_exchange)
 
-    if config.dry_run:
-        logging.info(f'dry run, skip place order: {signal}')
-        rc.srem('order:signal:processing', symbol)
-        return
+
+    # if order_mode_is_pending(ctx):
+    #     logging.info(f'dry run, skip place order: {signal}')
+    #     rc.srem('order:signal:processing', symbol)
+    #     return
 
     retry = 2
     while retry:

@@ -11,6 +11,14 @@ from cross_arbitrage.order.order_book import OrderSignal
 from cross_arbitrage.order.position_status import PositionDirection
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
 
+def order_mode_is_pending(ctx):
+    return ctx.get('order_mode') == 'pending'
+
+def order_mode_is_reduce_only(ctx):
+    return ctx.get('order_mode') == 'reduce_only'
+
+def order_mode_is_normal(ctx):
+    return ctx.get('order_mode') == 'normal'
 
 def get_order_status_key(order_id: str, ex_name: str):
     return f"order_status:{ex_name}:{order_id}"
@@ -36,7 +44,7 @@ def is_margin_rate_ok(
                 PositionDirection.short,
                 OrderSide.buy,
             ):
-                return True
+                return is_ok
     for exchange in [signal.maker_exchange, signal.taker_exchange]:
         key = f"margin:{exchange}"
         margin_raw = rc.hgetall(name=key)

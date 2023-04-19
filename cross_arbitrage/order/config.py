@@ -5,7 +5,7 @@ from typing import Dict, List, Union
 from pydantic import BaseModel, root_validator, validator
 
 from cross_arbitrage.config.account import AccountConfig
-from cross_arbitrage.config.constant import ENVS
+from cross_arbitrage.config.constant import ENVS, ORDER_MODES
 from cross_arbitrage.config.log import LogConfig
 from cross_arbitrage.config.network import NetworkConfig
 from cross_arbitrage.config.redis import RedisConfig
@@ -17,6 +17,7 @@ class OrderConfig(BaseModel):
     env: str = "dev"
     log: LogConfig
     debug: bool = False
+    order_mode: str = "normal"
     redis: RedisConfig
     network: NetworkConfig
     cross_arbitrage_symbol_datas: List[SymbolConfig] = []
@@ -42,6 +43,12 @@ class OrderConfig(BaseModel):
     def env_must_in_list(cls, value):
         if value not in ENVS:
             raise ValueError(f"env must in {','.join(ENVS)}")
+        return value
+
+    @validator("order_mode")
+    def order_mode_must_in_list(cls, value):
+        if value not in ORDER_MODES:
+            raise ValueError(f"order mode must in {','.join(ORDER_MODES)}")
         return value
 
     @root_validator

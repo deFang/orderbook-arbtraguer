@@ -39,6 +39,7 @@ def main(env: str):
     init_globals(config)
 
     ctx = CancelContext()
+    ctx.set('order_mode', config.order_mode)
 
     def _exit(signum, frame):
         logging.warning(f"===> get a signal {signum}, exiting")
