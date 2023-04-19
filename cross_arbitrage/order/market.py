@@ -144,6 +144,11 @@ def align_qty(exchange: ccxt.Exchange, symbol: str, qty: Decimal) -> Tuple[Decim
                 f'align qty not support exchange: {exchange.id}')
 
 
+def get_contract_size(exchange: ccxt.Exchange, symbol: str) -> Decimal:
+    ccxt_symbol = get_ccxt_symbol(symbol)
+    return Decimal(str(exchange.market(ccxt_symbol)['contractSize']))
+
+
 __ALL__ = [
     'place_order',
     'market_order',

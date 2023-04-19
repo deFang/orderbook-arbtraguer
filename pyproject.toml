@@ -17,6 +17,7 @@ redis = "^4.5.4"
 flask = "^2.2.3"
 pydantic = "^1.10.7"
 pytest = "^7.2.2"
+numpy = "^1.24.2"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^1.5.7"
