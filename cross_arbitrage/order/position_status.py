@@ -4,7 +4,6 @@ import logging
 import time
 import ccxt
 from cross_arbitrage.order.market import market_order
-from cross_arbitrage.order.order_book import get_position
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from cross_arbitrage.utils.exchange import get_symbol_min_amount
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt
@@ -87,6 +86,7 @@ def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[s
         sleep_with_context(ctx, 10 - (time.time() - start_time))
 
 def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
+    from cross_arbitrage.order.order_book import get_position
     order_prefix = 'croTalg'
     unprocessed_symbol_list = []
     for symbol in symbols:
@@ -105,7 +105,10 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             try:
                 positions = []
                 for exchange_name in exchanges.keys():
-                    positions.append([exchange_name, get_position(rc, exchange_name, symbol)])
+                    position = get_position(rc, exchange_name, symbol)
+                    if position == None:
+                        position = PositionStatus(direction=PositionDirection.long, qty=Decimal(0))
+                    positions.append([exchange_name, position])
                 delta = positions[0][1].qty - positions[1][1].qty
                 min_qty = get_symbol_min_amount(exchanges, symbol)
                 if abs(delta) > min_qty:
