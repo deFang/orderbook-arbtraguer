@@ -29,7 +29,7 @@ class OrderSignal(NamedTuple):
     maker_position: Optional[PositionStatus]
     is_reduce_position: bool = False
 
-_cache = ExpireCache(30)
+_cache = ExpireCache(1)
 
 def get_position(rc: redis.Redis, exchange_name: str, symbol: str):
     key = (exchange_name, symbol)
