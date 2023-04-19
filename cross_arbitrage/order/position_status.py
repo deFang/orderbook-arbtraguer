@@ -45,12 +45,11 @@ def get_position_status(rc: redis.Redis, exchange_name, symbol):
 
 def refresh_position_status(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
     for exchange_name, exchange in exchanges.items():
-        for symbol in symbols:
-            try:
-                refresh_symbol_position_status(rc, exchange_name, exchange, symbol)
-            except Exception as ex:
-                logging.error(f'Failed to refresh position status for {exchange_name}:{symbol}: {type(ex)}')
-                logging.exception(ex)
+        try:
+            refresh_symbol_position_status(rc, exchange_name, exchange, symbols)
+        except Exception as ex:
+            logging.error(f'Failed to refresh position status for {exchange_name}:{symbols}: {type(ex)}')
+            logging.exception(ex)
 
 
 def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange: ccxt.Exchange, symbols: list[str]):
