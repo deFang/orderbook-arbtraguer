@@ -115,7 +115,7 @@ def order_loop(ctx: CancelContext, config: OrderConfig, exchanges: Dict[str, ccx
                     # logging.info(f"order_qty is 0, skip place order: {signal}")
                     if config.debug:
                         logging.info(f"order_qty is 0, skip place order for {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price}")
-                continue
+                    continue
 
                 # add symbol to processing
                 rc.sadd('order:signal:processing', symbol)
