@@ -129,7 +129,7 @@ def normalize_ccxt_order(info, ex_name) -> Order:
         exchange=ex_name,
         timestamp=int(info["timestamp"]),
         timestamp_str=ts_to_str(int(info["timestamp"]) / 1000),
-        last_trade_timestamp=int(info["lastTradeTimestamp"]),
+        last_trade_timestamp=int(info["lastTradeTimestamp"]) if info.get("lastTradeTimestamp") else 0,
         type=_type,
         side=side,
         symbol=symbol,

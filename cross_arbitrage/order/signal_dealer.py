@@ -168,22 +168,23 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             # check position before exit
             if not is_canceled_or_filled:
                 order_info = _get_order(maker_exchange, symbol, maker_order_id)
-                filled_qty = Decimal(order_info.filled)
-                if filled_qty > followed_qty:
-                    logging.info(f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
-                    new_qty, _ = align_qty(taker_exchange, symbol, filled_qty - followed_qty)
-                    if new_qty > taker_exchange_minimum_qty:
-                        try:
-                            taker_client_id_count += 1
-                            taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}Tfix'
-                            order = market_order(taker_exchange, symbol,
-                                                 signal.taker_side, new_qty,
-                                                 client_id=taker_client_id)
-                        except Exception as e:
-                            logging.error(f'place taker order failed: {type(e)}')
-                            logging.exception(e)
-                elif filled_qty < followed_qty:
-                    logging.warn(f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
+                if order_info:
+                    filled_qty = Decimal(order_info.filled)
+                    if filled_qty > followed_qty:
+                        logging.info(f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
+                        new_qty, _ = align_qty(taker_exchange, symbol, filled_qty - followed_qty)
+                        if new_qty > taker_exchange_minimum_qty:
+                            try:
+                                taker_client_id_count += 1
+                                taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}Tfix'
+                                order = market_order(taker_exchange, symbol,
+                                                     signal.taker_side, new_qty,
+                                                     client_id=taker_client_id)
+                            except Exception as e:
+                                logging.error(f'place taker order failed: {type(e)}')
+                                logging.exception(e)
+                    elif filled_qty < followed_qty:
+                        logging.warn(f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
 
             sleep_time = 10
             if mark_clear_time is not None:
