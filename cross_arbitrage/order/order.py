@@ -102,12 +102,12 @@ def order_loop(ctx: CancelContext, config: OrderConfig, exchanges: Dict[str, ccx
                 # order mode is pending
                 if order_mode_is_pending(ctx):
                     logging.info(f"order mode is pending, ignore signal {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price} {signal.is_reduce_position}")
-                    return
+                    continue
 
                 # order mode is reduce only, ignore open orders
                 if order_mode_is_reduce_only(ctx) and (not signal.is_reduce_position):
                     logging.info(f"order mode is reduce only, ignore signal {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price} {signal.is_reduce_position}")
-                    return
+                    continue
 
                 # is margin rate is not satisfied, ignore spawn thread
                 order_qty = get_order_qty(signal, rc, config)
