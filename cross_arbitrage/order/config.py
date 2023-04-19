@@ -142,6 +142,7 @@ class OrderConfig(BaseModel):
         logging.info(f"=> log_dir:                 {self.log.dir}")
         logging.info(f"=> exchanges:               {','.join(self.exchange_pair_names)}")
         logging.info(f"=> len(symbols):            {len(self.cross_arbitrage_symbol_datas)}")
+        logging.info(f"=> order_mode:              {self.order_mode}")
         logging.info(f"=> symbol_leverage:         {self.symbol_leverage}")
         logging.info(f"=> max_margin_ratio:        {self.max_used_margin}")
         logging.info(f"=> max_notional_per_order:  {self.default_max_notional_per_order}")
