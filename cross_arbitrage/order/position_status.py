@@ -4,7 +4,7 @@ import logging
 import time
 import ccxt
 from cross_arbitrage.utils.context import CancelContext
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt
 import orjson
 import redis
 
@@ -53,26 +53,29 @@ def refresh_position_status(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange]
                 logging.exception(ex)
 
 
-def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange: ccxt.Exchange, symbol: str):
+def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange: ccxt.Exchange, symbols: list[str]):
     exchange: ccxt.binanceusdm | ccxt.okex
-    ccxt_symbol = get_ccxt_symbol(symbol)
+    ccxt_symbols = list(map(get_ccxt_symbol, symbols))
+    positions = []
 
     match exchange:
         case ccxt.binanceusdm():
-            positions = exchange.fetch_positions([ccxt_symbol])
+            positions = exchange.fetch_positions(ccxt_symbols)
             if len(positions) == 0:
-                raise Exception(f'No position found for {symbol}')
-            position = positions[0]
+                raise Exception(f'No position found for {symbols}')
         case ccxt.okex():
-            position = exchange.fetch_position(ccxt_symbol)
-    if position is None:
+            for chunk in [ccxt_symbols[i:i + 20] for i in range(0, len(ccxt_symbols), 20)]:
+                positions += exchange.fetch_positions(chunk)
+    if not positions:
         return None
-    contract_size = Decimal(str(position['contractSize']))
-    contracts = Decimal(str(position['contracts']))
-    qty = contracts * contract_size
-    direction = PositionDirection.long if position['side'] == 'long' else PositionDirection.short
-    position_status = PositionStatus(direction=direction, qty=qty)
-    update_position_status(rc, exchange_name, symbol, position_status)
+    for position in positions:
+        symbol = get_common_symbol_from_ccxt(position['symbol'])
+        contract_size = Decimal(str(position['contractSize']))
+        contracts = Decimal(str(position['contracts']))
+        qty = contracts * contract_size
+        direction = PositionDirection.long if position['side'] == 'long' else PositionDirection.short
+        position_status = PositionStatus(direction=direction, qty=qty)
+        update_position_status(rc, exchange_name, symbol, position_status)
 
 
 def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
