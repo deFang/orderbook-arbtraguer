@@ -8,7 +8,7 @@ from typing import Dict, List
 import ccxt
 from cross_arbitrage.order.globals import get_order_status_stream_is_ready
 from cross_arbitrage.order.order_status import start_order_status_stream_mainloop
-from cross_arbitrage.order.position_status import refresh_position_loop
+from cross_arbitrage.order.position_status import align_position_loop, refresh_position_loop
 import redis
 
 from cross_arbitrage.utils.context import CancelContext
@@ -61,6 +61,14 @@ def start_loop(ctx: CancelContext, config: OrderConfig):
         daemon=True,
     )
     position_status_thread.start()
+
+    align_position_thread = threading.Thread(
+            target=align_position_loop,
+            args=(ctx, rc, exchanges, symbols),
+            name="align_position_mainloop_thread",
+            daemon=True,
+            )
+    align_position_thread.start()
 
     # start main loop
     order_loop(ctx, config, exchanges, rc)

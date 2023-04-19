@@ -101,7 +101,7 @@ def place_order(exchange: ccxt.Exchange,
 
 def market_order(exchange: ccxt.Exchange,
                  symbol: str,
-                 side: Literal['sell'] | Literal['long'],
+                 side: Literal['sell'] | Literal['buy'],
                  qty: Decimal,
                  client_id=None,
                  align_qty=True):
@@ -110,7 +110,7 @@ def market_order(exchange: ccxt.Exchange,
 
 def maker_only_order(exchange: ccxt.Exchange,
                      symbol: str,
-                     side: Literal['sell'] | Literal['long'],
+                     side: Literal['sell'] | Literal['buy'],
                      qty: Decimal,
                      price: Decimal,
                      client_id=None,

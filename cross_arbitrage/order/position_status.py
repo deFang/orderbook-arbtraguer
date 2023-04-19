@@ -3,7 +3,10 @@ from enum import Enum
 import logging
 import time
 import ccxt
-from cross_arbitrage.utils.context import CancelContext
+from cross_arbitrage.order.market import market_order
+from cross_arbitrage.order.order_book import get_position
+from cross_arbitrage.utils.context import CancelContext, sleep_with_context
+from cross_arbitrage.utils.exchange import get_symbol_min_amount
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt
 import orjson
 import redis
@@ -81,4 +84,52 @@ def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[s
     while not ctx.is_canceled():
         start_time = time.time()
         refresh_position_status(rc, exchanges, symbols)
-        time.sleep(10 - (time.time() - start_time))
+        sleep_with_context(ctx, 10 - (time.time() - start_time))
+
+def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
+    order_prefix = 'croTalg'
+    unprocessed_symbol_list = []
+    for symbol in symbols:
+        res = []
+        with rc.pipeline() as pipe:
+            pipe.multi()
+            pipe.sismember('order:signal:processing', symbol)
+            pipe.sadd('order:signal:processing', symbol)
+            res = pipe.execute()
+        if res[0] == True:
+            continue
+        else:
+            unprocessed_symbol_list.append(symbol)
+        refresh_position_status(rc, exchanges, unprocessed_symbol_list)
+        for symbol in unprocessed_symbol_list:
+            try:
+                positions = []
+                for exchange_name in exchanges.keys():
+                    positions.append([exchange_name, get_position(rc, exchange_name, symbol)])
+                delta = positions[0][1].qty - positions[1][1].qty
+                min_qty = get_symbol_min_amount(exchanges, symbol)
+                if abs(delta) > min_qty:
+                    logging.info(f"align position: {symbol} {positions}")
+                if delta > min_qty:
+                    exchange = exchanges[positions[0][0]]
+                    side = 'sell' if positions[0][1].direction == PositionDirection.long else 'buy'
+                    market_order(exchange, symbol,
+                                         side, delta,
+                                         client_id=f"{order_prefix}T{int(time.time() * 1000)}")
+                elif delta < -min_qty:
+                    exchange = exchanges[positions[1][0]]
+                    side = 'sell' if positions[1][1].direction == PositionDirection.long else 'buy'
+                    market_order(exchange, symbol,
+                                         side, -delta,
+                                         client_id=f"{order_prefix}T{int(time.time() * 1000)}")
+            except Exception as ex:
+                logging.error(ex)
+                logging.exception(ex)
+            finally:
+                rc.srem('order:signal:processing', symbol)
+
+def align_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
+    while not ctx.is_canceled():
+        start_time = time.time()
+        align_position(rc, exchanges, symbols)
+        sleep_with_context(ctx, 30 - (time.time() - start_time))
