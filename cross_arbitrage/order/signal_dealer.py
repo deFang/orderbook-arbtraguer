@@ -288,37 +288,37 @@ def cancel_order_once(exchange: ccxt.Exchange, symbol: str, order_id: str):
 def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, 
                                  taker_ob: dict, need_depth_qty: Decimal, contract_size: Decimal):
     contract_size = np.float64(contract_size)
-    
+
     match signal.taker_side:
         case 'buy':
             ob = np.array(taker_ob['asks'], dtype=np.float64)
             if len(ob) == 0:
                 logging.warning('no asks on taker side: {}: {}'.format(signal.taker_exchange, taker_ob))
-                return False
+                return True
             
             # cancel order threshold if out of order book level
             if ob[-1, 0] < signal.cancel_order_threshold:
-                return True
+                return False
             
             ob[:, 1] *= contract_size
             if ob[ob[:, 0] <= signal.cancel_order_threshold, 1].sum() < need_depth_qty:
                 if config.debug:
                     logging.info('depth qty is not enough, signal: {}, ob: {}'.format(signal, ob))
-                return False
-            return True
+                return True
+            return False
         case 'sell':
             ob = np.array(taker_ob['bids'], dtype=np.float64)
             if len(ob) == 0:
                 logging.warning('no bids on taker side: {}: {}'.format(signal.taker_exchange, taker_ob))
-                return False
+                return True
             
             # cancel order threshold if out of order book level
             if ob[-1, 0] > signal.cancel_order_threshold:
-                return True
+                return False
             
             ob[:, 1] *= contract_size
             if ob[ob[:, 0] >= signal.cancel_order_threshold, 1].sum() < need_depth_qty:
                 if config.debug:
                     logging.info('depth qty is not enough, signal: {}, ob: {}'.format(signal, ob))
-                return False
-            return True
+                return True
+            return False
