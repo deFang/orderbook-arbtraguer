@@ -98,6 +98,7 @@ def order_loop(ctx: CancelContext, config: OrderConfig, exchanges: Dict[str, ccx
                     ob_count = 0
 
             if not rc.sismember('order:signal:processing', symbol):
+                logging.info(f"==> signal: {signal}")
                 # order mode is pending
                 if order_mode_is_pending(ctx):
                     logging.info(f"order mode is pending, ignore signal {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price} {signal.is_reduce_position}")
@@ -117,7 +118,6 @@ def order_loop(ctx: CancelContext, config: OrderConfig, exchanges: Dict[str, ccx
                 continue
 
                 # add symbol to processing
-                logging.info(f"==> signal: {signal}")
                 rc.sadd('order:signal:processing', symbol)
 
                 # TODO: start process thread
