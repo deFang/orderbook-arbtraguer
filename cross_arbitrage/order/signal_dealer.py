@@ -289,6 +289,8 @@ def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal
                                  taker_ob: dict, need_depth_qty: Decimal, contract_size: Decimal):
     contract_size = np.float64(contract_size)
 
+    threshold_line = signal.maker_price / (1 + signal.cancel_order_threshold)
+
     match signal.taker_side:
         case 'buy':
             ob = np.array(taker_ob['asks'], dtype=np.float64)
@@ -297,11 +299,11 @@ def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal
                 return True
             
             # cancel order threshold if out of order book level
-            if ob[-1, 0] < signal.cancel_order_threshold:
+            if ob[-1, 0] < threshold_line:
                 return False
             
             ob[:, 1] *= contract_size
-            if ob[ob[:, 0] <= signal.cancel_order_threshold, 1].sum() < need_depth_qty:
+            if ob[ob[:, 0] <= threshold_line, 1].sum() < need_depth_qty:
                 if config.debug:
                     logging.info('depth qty is not enough, signal: {}, ob: {}'.format(signal, ob))
                 return True
@@ -313,11 +315,11 @@ def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal
                 return True
             
             # cancel order threshold if out of order book level
-            if ob[-1, 0] > signal.cancel_order_threshold:
+            if ob[-1, 0] > threshold_line:
                 return False
             
             ob[:, 1] *= contract_size
-            if ob[ob[:, 0] >= signal.cancel_order_threshold, 1].sum() < need_depth_qty:
+            if ob[ob[:, 0] >= threshold_line, 1].sum() < need_depth_qty:
                 if config.debug:
                     logging.info('depth qty is not enough, signal: {}, ob: {}'.format(signal, ob))
                 return True
