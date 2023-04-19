@@ -77,5 +77,6 @@ def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange
 
 def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
     while not ctx.is_canceled():
+        start_time = time.time()
         refresh_position_status(rc, exchanges, symbols)
-        time.sleep(10)
+        time.sleep(10 - (time.time() - start_time))
