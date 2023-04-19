@@ -289,7 +289,7 @@ def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal
                                  taker_ob: dict, need_depth_qty: Decimal, contract_size: Decimal):
     contract_size = np.float64(contract_size)
 
-    threshold_line = signal.maker_price / (1 + signal.cancel_order_threshold)
+    threshold_line = signal.maker_price / Decimal(str(1 + signal.cancel_order_threshold))
 
     match signal.taker_side:
         case 'buy':
