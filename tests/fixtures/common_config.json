@@ -5,10 +5,11 @@
     "level": "info"
   },
   "redis": {
-    "url": "redis://localhost:6379/3"
+    "url": "redis://localhost:6379/3",
+    "orderbook_stream": "orderbook"
   },
-  "enabled_symbols": ["BTC/USDT", "ETH/USDT"],
-  "symbols": {},
+  "cross_arbitrage_symbol_datas": ["BTC/USDT", "ETH/USDT"],
+  "symbol_name_datas": {},
   "network": {
     "http_proxy": "http://localhost:1081",
     "https_proxy": "http://localhost:1081"

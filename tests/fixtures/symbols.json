@@ -1,5 +1,5 @@
 {
-  "symbols": {
+  "symbol_name_datas": {
     "BTC/USDT": {
       "okex": "BTC-USDT-SWAP",
       "binance": "BTCUSDT",
