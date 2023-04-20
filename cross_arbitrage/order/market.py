@@ -89,7 +89,7 @@ def place_order(exchange: ccxt.Exchange,
 
     # qty to market amount
     m = exchange.market(ccxt_symbol)
-    amount = qty / Decimal(m['contractSize'])
+    amount = qty / Decimal(str(m['contractSize']))
 
     if align_qty:
         amount = exchange.amount_to_precision(ccxt_symbol, amount)

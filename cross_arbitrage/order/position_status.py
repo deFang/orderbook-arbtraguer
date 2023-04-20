@@ -140,6 +140,8 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
 
 
 def align_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
+    sleep_with_context(ctx, 30)
+
     while not ctx.is_canceled():
         start_time = time.time()
         align_position(rc, exchanges, symbols)
