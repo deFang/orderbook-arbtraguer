@@ -8,7 +8,7 @@ import click
 
 from cross_arbitrage.fetch.config import get_config
 from cross_arbitrage.fetch.fetch_orderbook import fetch_orderbook_mainloop
-from cross_arbitrage.fetch.ogg_orderbook import agg_orderbook_mainloop
+from cross_arbitrage.fetch.agg_orderbook import agg_orderbook_mainloop
 from cross_arbitrage.fetch.utils.common import base_name, get_project_root
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.utils.logger import init_logger
