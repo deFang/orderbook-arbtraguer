@@ -48,9 +48,11 @@ def get_position_status(rc: redis.Redis, exchange_name, symbol):
 def refresh_position_status(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
     for exchange_name, exchange in exchanges.items():
         try:
-            refresh_symbol_position_status(rc, exchange_name, exchange, symbols)
+            refresh_symbol_position_status(
+                rc, exchange_name, exchange, symbols)
         except Exception as ex:
-            logging.error(f'Failed to refresh position status for {exchange_name}:{symbols}: {type(ex)}')
+            logging.error(
+                f'Failed to refresh position status for {exchange_name}:{symbols}: {type(ex)}')
             logging.exception(ex)
 
 
@@ -85,8 +87,8 @@ def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[s
         refresh_position_status(rc, exchanges, symbols)
         sleep_with_context(ctx, 10 - (time.time() - start_time))
 
+
 def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
-    from cross_arbitrage.order.order_book import get_position
     order_prefix = 'croTalg'
     unprocessed_symbol_list = []
     for symbol in symbols:
@@ -105,10 +107,11 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             try:
                 positions = []
                 for exchange_name in exchanges.keys():
-                    position = get_position(rc, exchange_name, symbol)
+                    position = get_position_status(rc, exchange_name, symbol)
                     if position == None:
-                        position = PositionStatus(direction=PositionDirection.long, qty=Decimal(0))
-                    positions.append([exchange_name, position])
+                        position = PositionStatus(
+                            direction=PositionDirection.long, qty=Decimal(0))
+                    positions.append((exchange_name, position))
                 delta = positions[0][1].qty - positions[1][1].qty
                 min_qty = get_symbol_min_amount(exchanges, symbol)
                 if abs(delta) > min_qty:
@@ -117,19 +120,20 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                     exchange = exchanges[positions[0][0]]
                     side = 'sell' if positions[0][1].direction == PositionDirection.long else 'buy'
                     market_order(exchange, symbol,
-                                         side, delta,
-                                         client_id=f"{order_prefix}T{int(time.time() * 1000)}")
+                                 side, delta,
+                                 client_id=f"{order_prefix}T{int(time.time() * 1000)}")
                 elif delta < -min_qty:
                     exchange = exchanges[positions[1][0]]
                     side = 'sell' if positions[1][1].direction == PositionDirection.long else 'buy'
                     market_order(exchange, symbol,
-                                         side, -delta,
-                                         client_id=f"{order_prefix}T{int(time.time() * 1000)}")
+                                 side, -delta,
+                                 client_id=f"{order_prefix}T{int(time.time() * 1000)}")
             except Exception as ex:
                 logging.error(ex)
                 logging.exception(ex)
             finally:
                 rc.srem('order:signal:processing', symbol)
+
 
 def align_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
     while not ctx.is_canceled():
