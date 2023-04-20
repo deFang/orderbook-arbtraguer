@@ -21,6 +21,8 @@ class PositionDirection(str, Enum):
 class PositionStatus(pydantic.BaseModel):
     direction: PositionDirection
     qty: Decimal
+    avg_price: Decimal
+    mark_price: Decimal
 
 
 def _json_default(obj):
@@ -75,9 +77,11 @@ def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange
         symbol = get_common_symbol_from_ccxt(position['symbol'])
         contract_size = Decimal(str(position['contractSize']))
         contracts = Decimal(str(position['contracts']))
+        avg_price = Decimal(str(position['entryPrice']))
+        mark_price = Decimal(str(position['markPrice']))
         qty = contracts * contract_size
         direction = PositionDirection.long if position['side'] == 'long' else PositionDirection.short
-        position_status = PositionStatus(direction=direction, qty=qty)
+        position_status = PositionStatus(direction=direction, qty=qty, avg_price=avg_price, makr_price=mark_price)
         update_position_status(rc, exchange_name, symbol, position_status)
 
 
@@ -116,18 +120,32 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                 positions.append((exchange_name, position))
             delta = positions[0][1].qty - positions[1][1].qty
             min_qty = get_symbol_min_amount(exchanges, symbol)
+
             if abs(delta) > min_qty:
                 logging.info(f"align position: {symbol} {positions}")
+
             if delta > min_qty:
                 exchange = exchanges[positions[0][0]]
-                side = 'sell' if positions[0][1].direction == PositionDirection.long else 'buy'
+                pos: PositionStatus = positions[0][1]
+
+                if pos.mark_price * delta > 50:
+                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(symbol, positions, min_qty))
+                    continue
+
+                side = 'sell' if pos.direction == PositionDirection.long else 'buy'
                 market_order(exchange, symbol,
                              side, delta,
                              client_id=f"{order_prefix}T{int(time.time() * 1000)}",
                              reduce_only=True)
             elif delta < -min_qty:
                 exchange = exchanges[positions[1][0]]
-                side = 'sell' if positions[1][1].direction == PositionDirection.long else 'buy'
+                pos: PositionStatus = positions[1][1]
+
+                if pos.mark_price * (-delta) > 50:
+                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(symbol, positions, min_qty))
+                    continue
+
+                side = 'sell' if pos.direction == PositionDirection.long else 'buy'
                 market_order(exchange, symbol,
                              side, -delta,
                              client_id=f"{order_prefix}T{int(time.time() * 1000)}",
