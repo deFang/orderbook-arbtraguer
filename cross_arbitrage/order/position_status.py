@@ -80,11 +80,11 @@ def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange
         symbol = get_common_symbol_from_ccxt(position['symbol'])
         contract_size = Decimal(str(position['contractSize']))
         contracts = Decimal(str(position['contracts']))
-        avg_price = Decimal(str(position['entryPrice']))
-        mark_price = Decimal(str(position['markPrice']))
+        avg_price = Decimal(str(position['entryPrice'])) if position['entryPrice'] else None
+        mark_price = Decimal(str(position['markPrice'])) if position['markPrice'] else None
         qty = contracts * contract_size
         direction = PositionDirection.long if position['side'] == 'long' else PositionDirection.short
-        position_status = PositionStatus(direction=direction, qty=qty, avg_price=avg_price, makr_price=mark_price)
+        position_status = PositionStatus(direction=direction, qty=qty, avg_price=avg_price, mark_price=mark_price)
         update_position_status(rc, exchange_name, symbol, position_status)
 
 
