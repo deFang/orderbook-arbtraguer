@@ -116,16 +116,11 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             positions = []
             for exchange_name in exchanges.keys():
                 position = get_position_status(rc, exchange_name, symbol)
-                # if position == None:
-                #     position = PositionStatus(
-                #         direction=PositionDirection.long, qty=Decimal(0),)
                 positions.append((exchange_name, position))
 
             min_qty = get_symbol_min_amount(exchanges, symbol)
             if positions[0][1] is None and positions[1][1] is None:
                 continue
-            # if (positions[0][1] is None and positions[1][1] < min_qty) or \
-            #     (positions[1][1] is None and positions[0][1] < min_qty):
             if positions[0][1] is None:
                 if positions[1][1].qty < min_qty:
                     continue
