@@ -3,6 +3,8 @@ from enum import Enum
 import logging
 import time
 import ccxt
+from cross_arbitrage.config.symbol import SymbolConfig
+from cross_arbitrage.order.config import OrderConfig
 from cross_arbitrage.order.market import market_order
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from cross_arbitrage.utils.exchange import get_symbol_min_amount
@@ -92,7 +94,7 @@ def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[s
         sleep_with_context(ctx, 10 - (time.time() - start_time))
 
 
-def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
+def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list, config: OrderConfig):
     order_prefix = 'croTalg'
     unprocessed_symbol_list = []
     for symbol in symbols:
@@ -114,12 +116,30 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             positions = []
             for exchange_name in exchanges.keys():
                 position = get_position_status(rc, exchange_name, symbol)
-                if position == None:
-                    position = PositionStatus(
-                        direction=PositionDirection.long, qty=Decimal(0))
+                # if position == None:
+                #     position = PositionStatus(
+                #         direction=PositionDirection.long, qty=Decimal(0),)
                 positions.append((exchange_name, position))
-            delta = positions[0][1].qty - positions[1][1].qty
+
             min_qty = get_symbol_min_amount(exchanges, symbol)
+            if positions[0][1] is None and positions[1][1] is None:
+                continue
+            # if (positions[0][1] is None and positions[1][1] < min_qty) or \
+            #     (positions[1][1] is None and positions[0][1] < min_qty):
+            if positions[0][1] is None:
+                if positions[1][1].qty < min_qty:
+                    continue
+                else:
+                    delta = -positions[1][1].qty
+            elif positions[1][1] is None:
+                if positions[0][1].qty < min_qty:
+                    continue
+                else:
+                    delta = positions[0][1].qty
+            else:
+                delta = positions[0][1].qty - positions[1][1].qty
+
+            symbol_info:SymbolConfig = config.get_symbol_datas(symbol)[0]
 
             if abs(delta) > min_qty:
                 logging.info(f"align position: {symbol} {positions}")
@@ -128,7 +148,7 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                 exchange = exchanges[positions[0][0]]
                 pos: PositionStatus = positions[0][1]
 
-                if pos.mark_price * delta > 50:
+                if pos.mark_price * delta > Decimal(str(symbol_info.max_notional_per_order)):
                     logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(symbol, positions, min_qty))
                     continue
 
@@ -157,10 +177,10 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             rc.srem('order:signal:processing', symbol)
 
 
-def align_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list):
+def align_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list, config: OrderConfig):
     sleep_with_context(ctx, 30)
 
     while not ctx.is_canceled():
         start_time = time.time()
-        align_position(rc, exchanges, symbols)
+        align_position(rc, exchanges, symbols, config)
         sleep_with_context(ctx, 30 - (time.time() - start_time))

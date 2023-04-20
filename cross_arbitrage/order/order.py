@@ -64,7 +64,7 @@ def start_loop(ctx: CancelContext, config: OrderConfig):
 
     align_position_thread = threading.Thread(
             target=align_position_loop,
-            args=(ctx, rc, exchanges, symbols),
+            args=(ctx, rc, exchanges, symbols, config),
             name="align_position_mainloop_thread",
             daemon=True,
             )
