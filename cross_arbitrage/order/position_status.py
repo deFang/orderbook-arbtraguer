@@ -2,6 +2,7 @@ from decimal import Decimal
 from enum import Enum
 import logging
 import time
+from typing import Optional
 import ccxt
 from cross_arbitrage.config.symbol import SymbolConfig
 from cross_arbitrage.order.config import OrderConfig
@@ -23,8 +24,8 @@ class PositionDirection(str, Enum):
 class PositionStatus(pydantic.BaseModel):
     direction: PositionDirection
     qty: Decimal
-    avg_price: Decimal
-    mark_price: Decimal
+    avg_price: Optional[Decimal] = None
+    mark_price: Optional[Decimal] = None
 
 
 def _json_default(obj):
