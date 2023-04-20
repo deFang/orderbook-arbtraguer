@@ -104,7 +104,7 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             unprocessed_symbol_list.append(symbol)
 
     refresh_position_status(rc, exchanges, unprocessed_symbol_list)
-    
+
     for symbol in unprocessed_symbol_list:
         try:
             positions = []
@@ -122,14 +122,16 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                 exchange = exchanges[positions[0][0]]
                 side = 'sell' if positions[0][1].direction == PositionDirection.long else 'buy'
                 market_order(exchange, symbol,
-                                side, delta,
-                                client_id=f"{order_prefix}T{int(time.time() * 1000)}")
+                             side, delta,
+                             client_id=f"{order_prefix}T{int(time.time() * 1000)}",
+                             reduce_only=True)
             elif delta < -min_qty:
                 exchange = exchanges[positions[1][0]]
                 side = 'sell' if positions[1][1].direction == PositionDirection.long else 'buy'
                 market_order(exchange, symbol,
-                                side, -delta,
-                                client_id=f"{order_prefix}T{int(time.time() * 1000)}")
+                             side, -delta,
+                             client_id=f"{order_prefix}T{int(time.time() * 1000)}",
+                             reduce_only=True)
         except Exception as ex:
             logging.error(ex)
             logging.exception(ex)

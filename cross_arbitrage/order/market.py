@@ -76,12 +76,16 @@ def place_order(exchange: ccxt.Exchange,
                 method: str,
                 price: Decimal = None,
                 client_id=None,
-                align_qty=True):
+                align_qty=True,
+                reduce_only=False):
     ccxt_symbol = get_ccxt_symbol(symbol)
 
     params = {}
     if client_id:
         params['clientOrderId'] = client_id
+
+    if reduce_only:
+        params['reduceOnly'] = True
 
     # qty to market amount
     m = exchange.market(ccxt_symbol)
@@ -104,8 +108,9 @@ def market_order(exchange: ccxt.Exchange,
                  side: Literal['sell'] | Literal['buy'],
                  qty: Decimal,
                  client_id=None,
-                 align_qty=True):
-    return place_order(exchange, symbol, side, qty, 'market', client_id=client_id, align_qty=align_qty)
+                 align_qty=True,
+                 reduce_only=False):
+    return place_order(exchange, symbol, side, qty, 'market', client_id=client_id, align_qty=align_qty, reduce_only=reduce_only)
 
 
 def maker_only_order(exchange: ccxt.Exchange,
@@ -114,8 +119,9 @@ def maker_only_order(exchange: ccxt.Exchange,
                      qty: Decimal,
                      price: Decimal,
                      client_id=None,
-                     align_qty=True):
-    return place_order(exchange, symbol, side, qty, 'maker_only', price, client_id=client_id, align_qty=align_qty)
+                     align_qty=True,
+                     reduce_only=False):
+    return place_order(exchange, symbol, side, qty, 'maker_only', price, client_id=client_id, align_qty=align_qty, reduce_only=reduce_only)
 
 
 def cancel_order(exchange: ccxt.Exchange, order_id: str, symbol: str = None):

@@ -181,16 +181,20 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                         new_qty, _ = align_qty(
                             taker_exchange, symbol, filled_qty - followed_qty)
                         if new_qty > taker_exchange_minimum_qty:
-                            try:
-                                taker_client_id_count += 1
-                                taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}Tfix'
-                                order = market_order(taker_exchange, symbol,
-                                                     signal.taker_side, new_qty,
-                                                     client_id=taker_client_id)
-                            except Exception as e:
-                                logging.error(
-                                    f'place taker order failed: {type(e)}')
-                                logging.exception(e)
+                            retry = 3
+                            while retry > 0:
+                                try:
+                                    taker_client_id_count += 1
+                                    taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}Tfix'
+                                    order = market_order(taker_exchange, symbol,
+                                                        signal.taker_side, new_qty,
+                                                        client_id=taker_client_id)
+                                    retry = 0
+                                except Exception as e:
+                                    logging.error(
+                                        f'place taker order failed: {type(e)}')
+                                    logging.exception(e)
+                                    retry -= 1
                     elif filled_qty < followed_qty:
                         logging.warn(
                             f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
