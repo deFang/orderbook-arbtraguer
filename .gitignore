@@ -152,3 +152,4 @@ logs/
 *.ipynb
 
 .python-version
+/tmp

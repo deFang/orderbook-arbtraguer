@@ -13,6 +13,9 @@ from cross_arbitrage.config.symbol import SymbolConfig
 from cross_arbitrage.fetch.utils.common import load_json_file, merge_dict
 
 
+class OutputData(BaseModel):
+    order_loop: str
+
 class OrderConfig(BaseModel):
     env: str = "dev"
     log: LogConfig
@@ -38,6 +41,8 @@ class OrderConfig(BaseModel):
     symbol_leverage: int = 2
 
     dry_run: bool = False
+
+    output_data: OutputData
 
     @validator("env")
     def env_must_in_list(cls, value):

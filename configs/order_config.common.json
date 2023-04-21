@@ -12,6 +12,9 @@
   "default_max_notional_per_symbol": 100,
   "default_cancel_position_timeout": 120,
   "symbol_leverage": 2,
+  "output_data": {
+    "path": "./datas/order_loop.csv"
+  },
   "cross_arbitrage_symbol_datas": [
     {
       "symbol_name": "APT/USDT",
