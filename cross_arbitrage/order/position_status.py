@@ -72,7 +72,7 @@ def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange
             if len(positions) == 0:
                 raise Exception(f'No position found for {symbols}')
         case ccxt.okex():
-            for chunk in [ccxt_symbols[i:i + 20] for i in range(0, len(ccxt_symbols), 20)]:
+            for chunk in [ccxt_symbols[i:i + 10] for i in range(0, len(ccxt_symbols), 10)]:
                 positions += exchange.fetch_positions(chunk)
     if not positions:
         return None
