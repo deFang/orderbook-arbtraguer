@@ -46,7 +46,7 @@ class Order(BaseModel):
     side: OrderSide
     status: OrderStatus
     price: str
-    average_price: str
+    average_price: Optional[str] = None
     amount: str
     filled: str
     cost: str
