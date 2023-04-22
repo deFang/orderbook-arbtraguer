@@ -87,6 +87,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
     # set for finished exiting tasks
     _cleared = False
     mark_clear_time = None
+    is_canceled_by_timeout = False
 
     while not _cleared:
         if ctx.is_canceled() and not _clear:
@@ -171,7 +172,8 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                     time.sleep(0.1)
                     continue
             # check position before exit
-            if not is_canceled_or_filled:
+            # if not is_canceled_or_filled:
+            if (not is_canceled_or_filled) or is_canceled_by_timeout:
                 order_info = _get_order(maker_exchange, symbol, maker_order_id)
                 if order_info:
                     filled_qty = Decimal(order_info.filled)
@@ -215,6 +217,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             ok = cancel_order_once(maker_exchange, symbol, maker_order_id)
             if ok:
                 _clear = True
+                is_canceled_by_timeout = True
                 continue
 
         # check if price delta is less than cancel_order_threshold on taker side
