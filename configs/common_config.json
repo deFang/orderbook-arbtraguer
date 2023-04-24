@@ -297,6 +297,11 @@
       "binance": "NEARUSDT",
       "ccxt": "NEAR/USDT:USDT"
     },
+    "AR/USDT": {
+      "okex": "AR-USDT-SWAP",
+      "binance": "ARUSDT",
+      "ccxt": "AR/USDT:USDT"
+    },
     "NEO/USDT": {
       "okex": "NEO-USDT-SWAP",
       "binance": "NEOUSDT",
