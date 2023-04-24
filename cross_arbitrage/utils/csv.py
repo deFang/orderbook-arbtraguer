@@ -1,9 +1,10 @@
+from collections import namedtuple
 from decimal import Decimal
 import json
 import os
 import csv
 import sys
-from typing import Type
+from typing import NamedTuple, Type
 import orjson
 
 if sys.version_info >= (3, 11):
@@ -25,36 +26,57 @@ class CSVModel(pydantic.BaseModel):
         return cls._flatten_header_from_type(type(data))
 
     @classmethod
-    def _flatten_header_from_type(cls, typ: Type[pydantic.BaseModel]) -> list[str]:
+    def _flatten_header_from_type(cls, typ) -> list[str]:
         fields = []
+
+        fields_types = {}
         if issubclass(typ, pydantic.BaseModel):
-            for key, field in typ.__fields__.items():
-                if issubclass(field.type_, pydantic.BaseModel):
-                    fields.extend(
-                        [f"{key}.{f}" for f in cls._flatten_header_from_type(field.type_)])
-                else:
-                    fields.append(key)
+            fields_types = {k: t.type_ for k, t in typ.__fields__.items()}
+        elif issubclass(typ, tuple) and hasattr(typ, '_fields'):
+            # NamedTuple
+            fields_types = typ.__annotations__
         else:
             raise ParseError(
-                f"flatten_header: not supported type {typ}")
+                f"_flatten_header_from_type: not supported type {typ}")
+
+        for key, field in fields_types.items():
+            if issubclass(field, pydantic.BaseModel) or (issubclass(field, tuple) and hasattr(field, '_fields')):
+                fields.extend(
+                    [f"{key}.{f}" for f in cls._flatten_header_from_type(field)])
+            else:
+                fields.append(key)
+
         return fields
 
     @classmethod
-    def flatten_data(cls, data: pydantic.BaseModel) -> dict:
+    def flatten_data(cls, data) -> dict:
         row = {}
 
-        if isinstance(data, pydantic.BaseModel):
-            for key, field in data.__fields__.items():
-                value = getattr(data, key)
-                match value:
+        if isinstance(data, pydantic.BaseModel) or (isinstance(data, tuple) and hasattr(data, '_fields')):
+            fields = {}
+            match data:
+                case pydantic.BaseModel():
+                    fields = {k: getattr(data, k) for k in data.__fields__.keys()}
+                case t if isinstance(t, tuple) and hasattr(t, '_fields'):
+                    t: NamedTuple
+                    fields = t._asdict()
+                case _:
+                    raise ParseError(
+                        f"flatten_data: not supported type {type(data)}")
+
+            for key, field in fields.items():
+                match field:
                     case pydantic.BaseModel():
                         row.update(
-                            {f"{key}.{f}": x for f, x in cls.flatten_data(value).items()})
+                            {f"{key}.{f}": x for f, x in cls.flatten_data(field).items()})
+                    case t if isinstance(t, tuple) and hasattr(t, '_fields'):
+                        row.update(
+                            {f"{key}.{f}": x for f, x in cls.flatten_data(t).items()})
                     case list() | dict():
                         row[key] = orjson.dumps(
-                            value, default=_orjson_default).decode()
+                            field, default=_orjson_default).decode()
                     case _:
-                        row[key] = value
+                        row[key] = field
         else:
             raise ParseError(
                 f"flatten_data: not supported type {type(data)}")
