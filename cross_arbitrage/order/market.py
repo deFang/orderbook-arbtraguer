@@ -140,9 +140,9 @@ def align_qty(exchange: ccxt.Exchange, symbol: str, qty: Decimal) -> Tuple[Decim
             r2 = contract_size - r1
             return r1, r2
         case ccxt.binanceusdm():
-            market_precesion = exchange.market(
-                ccxt_symbol)['precision']['amount']
-            r1 = round(qty, market_precesion)
+            # market_precesion = exchange.market(
+            #     ccxt_symbol)['precision']['amount']
+            r1 = Decimal(str(exchange.amount_to_precision(ccxt_symbol, qty)))
             r2 = qty - r1
             return r1, r2
         case _:

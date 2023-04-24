@@ -34,6 +34,16 @@
       "okex": "APE-USDT-SWAP",
       "binance": "APEUSDT",
       "ccxt": "APE/USDT:USDT"
+    },
+    "BNB/USDT": {
+      "okex": "BNB-USDT-SWAP",
+      "binance": "BNBUSDT",
+      "ccxt": "BNB/USDT:USDT"
+    },
+    "APT/USDT": {
+      "okex": "APT-USDT-SWAP",
+      "binance": "APTUSDT",
+      "ccxt": "APT/USDT:USDT"
     }
   }
 }

@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from typing import List, Union
 
 import ccxt
 import redis
@@ -24,14 +25,22 @@ def get_order_status_key(order_id: str, ex_name: str):
     return f"order_status:{ex_name}:{order_id}"
 
 
-def normalize_order_qty(exchange, symbol, qty):
+def normalize_order_qty(exchange: ccxt.Exchange, symbol:str, qty:Union[float,str,Decimal]):
+    exchange.load_markets()
     symbol_info = exchange.market(symbol)
-    if float(symbol_info["contractSize"]) == 1.0:
-        return Decimal(exchange.amount_to_precision(symbol, qty))
-    else:
-        qty = Decimal(str(qty)) / Decimal(str(symbol_info["contractSize"]))
-        qty = exchange.amount_to_precision(symbol, qty)
-        return Decimal(str(qty)) * Decimal(str(symbol_info["contractSize"]))
+    match exchange:
+        case ccxt.okex():
+            qty = Decimal(str(qty)) / Decimal(str(symbol_info["contractSize"]))
+            qty = exchange.amount_to_precision(symbol, qty)
+            return Decimal(str(qty)) * Decimal(str(symbol_info["contractSize"]))
+        case ccxt.binanceusdm():
+            return Decimal(exchange.amount_to_precision(symbol, qty))
+        case _:
+            raise Exception(f"unsupported exchanges: {exchange.name}")
+
+def normalize_exchanges_order_qty(exchanges: List[ccxt.Exchange], symbol:str, qty:Union[float,str,Decimal]):
+    qtys = [normalize_order_qty(ex, symbol, qty) for ex in exchanges]
+    return min(qtys)
 
 
 def is_margin_rate_ok(

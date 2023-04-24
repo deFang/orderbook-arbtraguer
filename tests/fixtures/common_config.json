@@ -14,5 +14,16 @@
     "http_proxy": "http://localhost:1081",
     "https_proxy": "http://localhost:1081"
   },
-  "exchanges": {}
+  "exchanges": {
+    "binance": {
+      "api_key": "",
+      "secret": "",
+      "password": ""
+    },
+    "okex": {
+      "api_key": "",
+      "secret": "",
+      "password": ""
+    }
+  }
 }
