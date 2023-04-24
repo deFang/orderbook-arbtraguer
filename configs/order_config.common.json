@@ -13,7 +13,7 @@
   "default_cancel_position_timeout": 120,
   "symbol_leverage": 2,
   "output_data": {
-    "path": "./data/order_loop.csv"
+    "order_loop": "./data/order_loop.csv"
   },
   "cross_arbitrage_symbol_datas": [
     {
