@@ -5,6 +5,7 @@ from typing import Dict
 
 import ccxt
 from pydantic import BaseModel
+import pydantic
 from cross_arbitrage.fetch.utils.redis import get_ob_storage_key
 from cross_arbitrage.utils.csv import CSVModel
 from cross_arbitrage.utils.decorator import retry
@@ -24,6 +25,7 @@ from .model import Order as OrderModel, OrderStatus, normalize_ccxt_order
 
 
 class _Status(BaseModel):
+    timestamp: float = pydantic.Field(default_factory=now_ms)
     status: str
     order_id: str | None
     post_qty: Decimal | None
@@ -86,8 +88,12 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
 
             logging.error(f'place maker order failed: {type(e)}')
             logging.exception(e)
+
             if not retry:
                 rc.srem('order:signal:processing', symbol)
+
+                stat = OrderDataModel(
+                    signal=signal, status=_Status.default('maker_order_failed'))
                 return
 
     if maker_order['status'] in ['rejected', 'expired', 'canceled']:
