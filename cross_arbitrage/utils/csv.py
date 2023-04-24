@@ -1,10 +1,11 @@
 from collections import namedtuple
 from decimal import Decimal
 import json
+import logging
 import os
 import csv
 import sys
-from typing import NamedTuple, Type
+from typing import NamedTuple, Optional, Type, Union, get_origin
 import orjson
 
 if sys.version_info >= (3, 11):
@@ -40,6 +41,14 @@ class CSVModel(pydantic.BaseModel):
                 f"_flatten_header_from_type: not supported type {typ}")
 
         for key, field in fields_types.items():
+            # if field is Optional[T], extract T
+            if get_origin(field) == Union:
+                for f in field.__args__:
+                    if f != type(None):
+                        field = f
+                        break
+
+            # logging.debug(f"flatten_header: {key} {field}")
             if issubclass(field, pydantic.BaseModel) or (issubclass(field, tuple) and hasattr(field, '_fields')):
                 fields.extend(
                     [f"{key}.{f}" for f in cls._flatten_header_from_type(field)])
@@ -53,18 +62,40 @@ class CSVModel(pydantic.BaseModel):
         row = {}
 
         if isinstance(data, pydantic.BaseModel) or (isinstance(data, tuple) and hasattr(data, '_fields')):
+            fields_types = {}
             fields = {}
             match data:
                 case pydantic.BaseModel():
-                    fields = {k: getattr(data, k) for k in data.__fields__.keys()}
+                    fields_types = {k: t.type_ for k,
+                                    t in type(data).__fields__.items()}
+                    fields = {k: getattr(data, k, None)
+                              for k in data.__fields__.keys()}
                 case t if isinstance(t, tuple) and hasattr(t, '_fields'):
                     t: NamedTuple
+                    fields_types = t.__annotations__
                     fields = t._asdict()
                 case _:
                     raise ParseError(
                         f"flatten_data: not supported type {type(data)}")
 
-            for key, field in fields.items():
+            for key, typ in fields_types.items():
+                field = fields[key]
+
+                # if field is Optional[T], extract T
+                if get_origin(typ) == Union:
+                    for f in typ.__args__:
+                        if f != type(None):
+                            typ = f
+                            break
+
+                    if field == None:
+                        if issubclass(typ, pydantic.BaseModel):
+                            field = typ.construct({k: None for k in typ.__fields__})
+                            # field = typ(**{k: None for k in typ.__fields__})
+                        elif (issubclass(typ, tuple) and hasattr(typ, '_fields')):
+                            typ: NamedTuple
+                            field = typ(**{k: None for k in typ._fields})
+
                 match field:
                     case pydantic.BaseModel():
                         row.update(
