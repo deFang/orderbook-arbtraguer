@@ -437,6 +437,16 @@
       "binance": "ZILUSDT",
       "ccxt": "ZIL/USDT:USDT"
     },
+    "WOO/USDT": {
+      "okex": "WOO-USDT-SWAP",
+      "binance": "WOOUSDT",
+      "ccxt": "WOO/USDT:USDT"
+    },
+    "MAGIC/USDT": {
+      "okex": "MAGIC-USDT-SWAP",
+      "binance": "MAGICUSDT",
+      "ccxt": "MAGIC/USDT:USDT"
+    },
     "ZRX/USDT": {
       "okex": "ZRX-USDT-SWAP",
       "binance": "ZRXUSDT",
