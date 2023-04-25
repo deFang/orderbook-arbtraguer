@@ -156,7 +156,7 @@ def load_json_file(file_path):
 def save_dictlist_to_csv(file_path, headers, dictlist, file_mode="a"):
     ensure_dir(dirname(file_path))
     file_exists = False
-    if exists(file_path):
+    if exists(file_path) and not file_mode.startswith('w'):
         file_exists = True
     filtered_dictlist = [
         dict(((key, obj[key]) for key in obj.keys() if key in headers))
