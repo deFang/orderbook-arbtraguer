@@ -447,6 +447,11 @@
       "binance": "MAGICUSDT",
       "ccxt": "MAGIC/USDT:USDT"
     },
+    "STX/USDT": {
+      "okex": "STX-USDT-SWAP",
+      "binance": "STXUSDT",
+      "ccxt": "STX/USDT:USDT"
+    },
     "ZRX/USDT": {
       "okex": "ZRX-USDT-SWAP",
       "binance": "ZRXUSDT",
