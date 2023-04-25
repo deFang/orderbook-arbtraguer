@@ -1,0 +1,16 @@
+{
+    "exchanges": {
+        "binance": {
+            "api_key": "",
+            "secret": "",
+            "password": ""
+        },
+        "okex": {
+            "api_key": "",
+            "secret": "",
+            "password": ""
+        }
+    },
+    "sqlite_path": "db.sqlite",
+    "collect_every_x_hours": 1
+}
