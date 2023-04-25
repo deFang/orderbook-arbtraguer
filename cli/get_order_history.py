@@ -1,28 +1,78 @@
 # entry
-from datetime import datetime, timezone
-from decimal import Decimal
 import json
 import logging
+import traceback
+from datetime import datetime, timezone
+from decimal import Decimal
 from os.path import exists, join
 from time import sleep
-import traceback
+
 import ccxt
-
 import click
+import pandas as pd
 
-from cross_arbitrage.fetch.utils.common import base_name, get_project_root, now_ms, save_dictlist_to_csv
+from cross_arbitrage.fetch.utils.common import (base_name, get_project_root,
+                                                now_ms, save_dictlist_to_csv)
 from cross_arbitrage.order.config import get_config
 from cross_arbitrage.order.globals import init_globals
 from cross_arbitrage.utils.decorator import paged_since, retry
 from cross_arbitrage.utils.logger import init_logger
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, init_symbol_mapping_from_file
-
+from cross_arbitrage.utils.symbol_mapping import (
+    get_ccxt_symbol, init_symbol_mapping_from_file)
 
 # constants
-DATA_DIR = 'data'
+DATA_DIR = "data"
+
 
 def date_now_str():
     return datetime.now().strftime("%Y%m%d")
+
+
+def normalize_symbol(origin_symbol: str, quote="USDT"):
+    if origin_symbol.endswith(quote):
+        base = origin_symbol.removesuffix(quote)
+        return f"{base}/{quote}"
+    elif len(origin_symbol.split("-")) == 3:
+        parts = origin_symbol.split("-")
+        return f"{parts[0]}/{parts[1]}"
+    else:
+        raise Exception(f"unsupported symbol: {origin_symbol}")
+
+
+def is_okex_row(row):
+    return "-SWAP" in row["symbol"]
+
+
+def set_dyn_cost(row):
+    if row["side"] in ["buy", "BUY"]:
+        return -row["cost"]
+    else:
+        return row["cost"]
+
+
+def set_dyn_amount(row):
+    if row["side"] in ["buy", "BUY"]:
+        return row["executedQty"]
+    else:
+        return -row["executedQty"]
+
+
+def set_okex_cost(row):
+    if is_okex_row(row):
+        return row["cost"]
+    else:
+        return 0
+
+
+def set_binance_cost(row):
+    if is_okex_row(row):
+        return 0
+    else:
+        return row["cost"]
+
+
+def set_normalized_symbol(row):
+    return normalize_symbol(row["symbol"])
 
 
 @retry(max_retry_count=2, retry_interval_base=0.5)
@@ -124,8 +174,14 @@ def gen_order_csv(exchange):
                         "side": o["side"].upper(),
                         "price": o["px"],
                         "avgPrice": o["avgPx"],
-                        "origQty": str(Decimal(str(o["sz"])) * Decimal(str(symbol_info['contractSize']))),
-                        "executedQty": str(Decimal(str(o["accFillSz"])) * Decimal(str(symbol_info['contractSize']))),
+                        "origQty": str(
+                            Decimal(str(o["sz"]))
+                            * Decimal(str(symbol_info["contractSize"]))
+                        ),
+                        "executedQty": str(
+                            Decimal(str(o["accFillSz"]))
+                            * Decimal(str(symbol_info["contractSize"]))
+                        ),
                         "cost": str(
                             Decimal(o["accFillSz"])
                             * Decimal(o["fillPx"])
@@ -211,10 +267,59 @@ def gen_order_csv(exchange):
             )
 
 
+def analysis_orders():
+    data_path = join(get_project_root(), DATA_DIR)
+    df1 = pd.read_csv(f"{data_path}/binance_orders_{date_now_str()}.csv")
+    df1 = df1.drop(columns=["timeInForce"])
+
+    df2 = pd.read_csv(f"{data_path}/okex_orders_{date_now_str()}.csv")
+
+    df3 = pd.concat([df1, df2]).sort_values(
+        ["timestamp", "clientOrderId"], ascending=[True, True]
+    )
+
+    df3 = df3.assign(dyn_cost=df3.apply(set_dyn_cost, axis=1))
+    df3 = df3.assign(dyn_amount=df3.apply(set_dyn_amount, axis=1))
+    df3 = df3.assign(ok_cost=df3.apply(set_okex_cost, axis=1))
+    df3 = df3.assign(bn_cost=df3.apply(set_binance_cost, axis=1))
+
+    # summary
+
+    print("")
+    print("=" * 20, "汇总", "=" * 20)
+    ok_orders = df3.loc[df3["symbol"].str.contains("-SWAP", case=True)]
+    print(f"okex订单: count={ok_orders['id'].count()}, notional={ok_orders['cost'].sum()}")
+    bn_orders = df3.loc[~df3["symbol"].str.contains("-SWAP", case=True)]
+    print(f"bn订单:   count={bn_orders['id'].count()}, notional={bn_orders['cost'].sum()}")
+
+    align_orders = df3.loc[
+        df3["clientOrderId"].str.contains("TalgT", case=True)
+    ]
+    print(f"对齐订单: count={align_orders['id'].count()}, notional={align_orders['cost'].sum()}")
+    print(f"毛利润:   {df3['dyn_cost'].sum()}")
+    print(f"净利润:   {df3['dyn_cost'].sum() - df3['bn_cost'].sum() * 0.00017}")
+
+    print("")
+    print("=" * 20, "标的明细", "=" * 20)
+    df4 = df3.assign(_symbol=df3.apply(set_normalized_symbol, axis=1))
+    # df4.groupby('_symbol')['dyn_cost'].sum()
+    df5 = df4.groupby("_symbol")["dyn_amount"].sum().to_frame()
+    df5['毛利润'] = (df4.groupby("_symbol")["dyn_cost"].sum().to_frame())['dyn_cost']
+    df5["手续费"] = (df4.groupby("_symbol")["cost"].sum() * 0.000085).to_frame()[
+        "cost"
+    ]
+    df5 = df5.rename(columns={"dyn_cost": "毛利润", "dyn_amount":"净仓位"})
+    df5["净利润"] = df5["毛利润"] - df5["手续费"]
+
+    df5.index.rename("标的", inplace=True)
+
+    print(df5)
+
+
 @click.command()
 @click.option("--env", "-e", help="use a environment", default="dev")
 @click.option("--since", help="since timestamp")
-def main(env: str, since:str):
+def main(env: str, since: str):
     logger = init_logger(base_name(__file__))
 
     config_files = [
@@ -240,7 +345,8 @@ def main(env: str, since:str):
     init_globals(config)
 
     symbols = [
-      get_ccxt_symbol(symbol.symbol_name)  for symbol in config.cross_arbitrage_symbol_datas
+        get_ccxt_symbol(symbol.symbol_name)
+        for symbol in config.cross_arbitrage_symbol_datas
     ]
     print(symbols)
     since = int(since)
@@ -265,11 +371,15 @@ def main(env: str, since:str):
     binance = ccxt.binanceusdm(binance_option)
     binance.ex_name = "binance"
 
-    sync_symbols_orders(binance, symbols, since=since, until=until, dir=DATA_DIR)
+    sync_symbols_orders(
+        binance, symbols, since=since, until=until, dir=DATA_DIR
+    )
     sync_symbols_orders(okex, symbols, since=since, until=until, dir=DATA_DIR)
 
     gen_order_csv(okex)
     gen_order_csv(binance)
+
+    analysis_orders()
 
 
 if __name__ == "__main__":
