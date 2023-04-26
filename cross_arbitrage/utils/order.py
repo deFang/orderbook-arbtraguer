@@ -89,8 +89,8 @@ def get_order_qty(signal: OrderSignal, rc: redis.Redis, config: OrderConfig):
             else:
                 res = signal.maker_qty
         ccxt_symbol = get_ccxt_symbol(signal.symbol)
-        order_qty = normalize_order_qty(
-            exchange=exchanges[signal.maker_exchange],
+        order_qty = normalize_exchanges_order_qty(
+            exchanges=[exchanges[signal.maker_exchange],exchanges[signal.taker_exchange]],
             symbol=ccxt_symbol,
             qty=res,
         )

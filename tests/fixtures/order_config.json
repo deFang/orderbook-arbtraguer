@@ -27,5 +27,8 @@
         "decrease_position_threshold": 0.0
       }
     }
-  ]
+  ],
+  "output_data": {
+    "order_loop": ""
+  }
 }

@@ -63,3 +63,5 @@ def test_normalize_exchange_order_qty(config):
 
     bnb_amount = normalize_exchanges_order_qty([okex, binance], "BNB/USDT:USDT", '0.31')
     assert str(bnb_amount) == "0.31"
+    ape_amount = normalize_exchanges_order_qty([okex, binance], "APE/USDT:USDT", '12.5')
+    assert str(ape_amount) == "12"
