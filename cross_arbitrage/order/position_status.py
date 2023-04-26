@@ -159,7 +159,7 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                 exchange = exchanges[positions[1][0]]
                 pos: PositionStatus = positions[1][1]
 
-                if pos.mark_price * (-delta) > 50:
+                if pos.mark_price * (-delta) > Decimal(str(symbol_info.max_notional_per_order)):
                     logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(symbol, positions, min_qty))
                     continue
 
