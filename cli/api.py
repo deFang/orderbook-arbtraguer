@@ -3,13 +3,16 @@ import signal
 import threading
 import time
 from os.path import exists, join
+import sys
 
 import click
 from playhouse.sqlite_ext import SqliteExtDatabase
+from gevent import pywsgi
 
 from cross_arbitrage.api.config import AppConfig, get_config
 from cross_arbitrage.api.collect_data import collect_data
 from cross_arbitrage.api.model import init_db
+from cross_arbitrage.api.api import api_app
 from cross_arbitrage.fetch.utils.common import base_name, get_project_root
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from cross_arbitrage.utils.logger import init_logger
@@ -18,7 +21,9 @@ from cross_arbitrage.utils.logger import init_logger
 # entry
 @click.command()
 @click.option("--env", "-e", help="use a environment", default="dev")
-def main(env: str):
+@click.option('--host', '-h', default='127.0.0.1', help='bind host')
+@click.option('--port', '-p', default=9800, help='bind port')
+def main(env: str, host: str, port: int):
     logger = init_logger(base_name(__file__))
 
     config_files = [
@@ -51,6 +56,9 @@ def main(env: str):
 
         for thread_object in thread_objects:
             thread_object.join()
+        
+        logging.info("stopped")
+        exit(0)
 
     signal.signal(signal.SIGINT, _exit)
     signal.signal(signal.SIGTERM, _exit)
@@ -63,13 +71,9 @@ def main(env: str):
     )
     thread.start()
     thread_objects.append(thread)
-
-    while True:
-        if cancel_ctx.is_canceled():
-            for thread_object in thread_objects:
-                thread_object.join()
-            break
-        sleep_with_context(cancel_ctx, 1)
+    
+    logging.info(f"start api server at http://{host}:{port}")
+    pywsgi.WSGIServer((host, port), api_app).serve_forever()
 
 
 def init(config: AppConfig):
