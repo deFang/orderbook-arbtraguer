@@ -292,9 +292,8 @@ def analysis_orders():
     bn_orders = df3.loc[~df3["symbol"].str.contains("-SWAP", case=True)]
     print(f"bn订单:   count={bn_orders['id'].count()}, notional={bn_orders['cost'].sum()}")
 
-    align_orders = df3.loc[
-        df3["clientOrderId"].str.contains("TalgT", case=True)
-    ]
+    notnull_df3 = df3[~df3['clientOrderId'].isnull()]
+    align_orders = notnull_df3.loc[notnull_df3['clientOrderId'].str.contains('TalgT', case=True)]
     print(f"对齐订单: count={align_orders['id'].count()}, notional={align_orders['cost'].sum()}")
     print(f"毛利润:   {df3['dyn_cost'].sum()}")
     print(f"净利润:   {df3['dyn_cost'].sum() - df3['bn_cost'].sum() * 0.00017}")

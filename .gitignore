@@ -139,8 +139,9 @@ cython_debug/
 
 
 # local config
-*.prod.json
-*.dev.json
+configs/
+!configs/common_config.json
+!configs/*.common.json
 
 # data dir
 data/
