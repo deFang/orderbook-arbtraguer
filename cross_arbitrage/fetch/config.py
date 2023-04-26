@@ -28,7 +28,7 @@ class FetchConfig(BaseModel):
 
     @validator("env")
     def env_must_in_list(cls, value):
-        if value not in ENVS:
+        if (value not in ENVS) and (not value.startswith('aa')):
             raise ValueError(f"env must in {','.join(ENVS)}")
         return value
 
