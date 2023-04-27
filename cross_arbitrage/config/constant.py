@@ -4,7 +4,7 @@ EXCHANGES = ["okex", "binance"]
 
 LOG_LEVELS = ["debug", "info", "warning", "error", "critical"]
 
-ORDER_MODES = ["pending", "reduce_only", "normal"]
+ORDER_MODES = ["pending", "reduce_only", "normal", "maintain"]
 
 
 def to_ccxt_exchange_name(ex_name: str) -> str:

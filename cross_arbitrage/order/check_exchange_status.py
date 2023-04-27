@@ -1,3 +1,4 @@
+import logging
 import ccxt
 
 from cross_arbitrage.order.config import OrderConfig
@@ -26,11 +27,13 @@ def check_exchange_status_loop(ctx: CancelContext, config: OrderConfig, exchange
         
         if current_mode == _maintain_mode:
             if all(status.ok for status in exchange_status.values()):
+                logging.warn(f"change order_mode from maintain to {_last_ok_mode} mode: {exchange_status}")
                 ctx.set('order_mode', _last_ok_mode)
             else:
                 sleep_time = 120
         else:
             if any(not status.ok for status in exchange_status.values()):
+                logging.warn(f"change order_mode from {current_mode} to maintain mode: {exchange_status}")
                 ctx.set('order_mode', _maintain_mode)
                 sleep_time = 120
         
