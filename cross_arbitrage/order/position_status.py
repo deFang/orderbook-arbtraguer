@@ -139,7 +139,7 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
 
             symbol_info:SymbolConfig = config.get_symbol_datas(symbol)[0]
 
-            if abs(delta) > min_qty:
+            if abs(delta) >= min_qty:
                 logging.info(f"align position: {symbol} {positions}")
 
             if delta >= min_qty:

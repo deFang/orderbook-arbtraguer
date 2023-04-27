@@ -1,5 +1,6 @@
 import time
 from typing import Dict
+from decimal import Decimal
 import ccxt
 from cross_arbitrage.config.account import AccountConfig
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
@@ -28,10 +29,13 @@ def get_symbol_min_amount(exchanges: Dict[str, ccxt.Exchange], symbol:str):
     for ex_name, ex in exchanges.items():
         ex.load_markets()
         symbol_info = ex.market(ccxt_symbol)
-        if float(symbol_info['contractSize']) == 1.0:
-            ret[ex_name] = 10**(-symbol_info['precision']['amount'])
-        else:
-            ret[ex_name] = symbol_info['contractSize']
+        match ex:
+            case ccxt.okex():
+                ret[ex_name] = Decimal(symbol_info['contractSize'])
+            case ccxt.binanceus():
+                ret[ex_name] = Decimal(10**(-symbol_info['precision']['amount']))
+            case _:
+                raise Exception(f"unsupport exchange: {ex_name}")
     return max(list(ret.values()))
 
 def get_exchange_name(exchange: ccxt.Exchange) -> str:
