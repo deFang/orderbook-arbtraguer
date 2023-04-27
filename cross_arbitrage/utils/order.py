@@ -21,6 +21,9 @@ def order_mode_is_reduce_only(ctx):
 def order_mode_is_normal(ctx):
     return ctx.get('order_mode') == 'normal'
 
+def order_mode_is_maintain(ctx):
+    return ctx.get('order_mode') == 'maintain'
+
 def get_order_status_key(order_id: str, ex_name: str):
     return f"order_status:{ex_name}:{order_id}"
 

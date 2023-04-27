@@ -13,11 +13,12 @@ import redis
 
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.utils.exchange import create_exchange
-from cross_arbitrage.utils.order import get_order_qty, order_mode_is_pending, order_mode_is_reduce_only
+from cross_arbitrage.utils.order import get_order_qty, order_mode_is_maintain, order_mode_is_pending, order_mode_is_reduce_only
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
 from .config import OrderConfig
 from .order_book import fetch_orderbooks_from_redis, get_signal_from_orderbooks
 from .signal_dealer import deal_loop
+from .check_exchange_status import check_exchange_status_loop
 
 
 def start_loop(ctx: CancelContext, config: OrderConfig):
@@ -70,6 +71,14 @@ def start_loop(ctx: CancelContext, config: OrderConfig):
             )
     align_position_thread.start()
 
+    check_exchange_status_thread = threading.Thread(
+        target=check_exchange_status_loop,
+        args=(ctx, config, exchanges),
+        name="check_exchange_status_loop_thread",
+        daemon=True,
+    )
+    check_exchange_status_thread.start()
+
     # start main loop
     order_loop(ctx, config, exchanges, rc)
 
@@ -110,6 +119,10 @@ def order_loop(ctx: CancelContext, config: OrderConfig, exchanges: Dict[str, ccx
                 # order mode is pending
                 if order_mode_is_pending(ctx):
                     logging.info(f"order mode is pending, ignore signal {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price} {signal.is_reduce_position}")
+                    continue
+
+                if order_mode_is_maintain(ctx):
+                    logging.info(f'order mode is maintain, ignore signal {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price} {signal.is_reduce_position}')
                     continue
 
                 # order mode is reduce only, ignore open orders
