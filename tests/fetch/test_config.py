@@ -16,4 +16,4 @@ def test_get_common_config():
     assert config.name == "fetch_cli"
     assert config.redis.url == "redis://localhost:6379/3"
     assert config.network.http_proxy == "http://localhost:1081"
-    assert len(config.symbol_name_datas.keys()) == 7
+    assert len(config.symbol_name_datas.keys()) == 11

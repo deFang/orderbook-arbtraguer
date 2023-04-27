@@ -142,7 +142,7 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             if abs(delta) > min_qty:
                 logging.info(f"align position: {symbol} {positions}")
 
-            if delta > min_qty:
+            if delta >= min_qty:
                 exchange = exchanges[positions[0][0]]
                 pos: PositionStatus = positions[0][1]
 
@@ -155,7 +155,7 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                              side, delta,
                              client_id=f"{order_prefix}T{int(time.time() * 1000)}",
                              reduce_only=True)
-            elif delta < -min_qty:
+            elif delta <= -min_qty:
                 exchange = exchanges[positions[1][0]]
                 pos: PositionStatus = positions[1][1]
 

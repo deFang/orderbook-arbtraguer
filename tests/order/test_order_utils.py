@@ -6,7 +6,7 @@ from cross_arbitrage.fetch.utils.common import get_project_root
 
 from cross_arbitrage.order.config import get_config
 from cross_arbitrage.order.market import align_qty
-from cross_arbitrage.utils.exchange import create_exchange
+from cross_arbitrage.utils.exchange import create_exchange, get_symbol_min_amount
 from cross_arbitrage.utils.order import normalize_exchanges_order_qty, normalize_order_qty
 from cross_arbitrage.utils.symbol_mapping import init_symbol_mapping_from_file
 
@@ -65,3 +65,14 @@ def test_normalize_exchange_order_qty(config):
     assert str(bnb_amount) == "0.31"
     ape_amount = normalize_exchanges_order_qty([okex, binance], "APE/USDT:USDT", '12.5')
     assert str(ape_amount) == "12"
+
+def test_get_symbol_min_amount(config):
+    symbol = 'AR/USDT'
+
+    okex = create_exchange(config.exchanges['okex'])
+    binance = create_exchange(config.exchanges['binance'])
+
+    min_amount = get_symbol_min_amount({"okex": okex, "binance": binance}, symbol)
+
+    assert str(min_amount) == "0.1"
+

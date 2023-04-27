@@ -20,6 +20,16 @@
       "binance": "ALGOUSDT",
       "ccxt": "ALGO/USDT:USDT"
     },
+    "XMR/USDT": {
+      "okex": "XMR-USDT-SWAP",
+      "binance": "XMRUSDT",
+      "ccxt": "XMR/USDT:USDT"
+    },
+    "AR/USDT": {
+      "okex": "AR-USDT-SWAP",
+      "binance": "ARUSDT",
+      "ccxt": "AR/USDT:USDT"
+    },
     "ALPHA/USDT": {
       "okex": "ALPHA-USDT-SWAP",
       "binance": "ALPHAUSDT",
