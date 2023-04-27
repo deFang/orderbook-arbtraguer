@@ -32,7 +32,7 @@ def get_symbol_min_amount(exchanges: Dict[str, ccxt.Exchange], symbol:str):
         match ex:
             case ccxt.okex():
                 ret[ex_name] = Decimal(symbol_info['contractSize'])
-            case ccxt.binanceus():
+            case ccxt.binanceusdm():
                 ret[ex_name] = Decimal(10**(-symbol_info['precision']['amount']))
             case _:
                 raise Exception(f"unsupport exchange: {ex_name}")
