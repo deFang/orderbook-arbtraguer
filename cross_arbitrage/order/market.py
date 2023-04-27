@@ -1,5 +1,6 @@
 from decimal import Decimal
-from typing import Literal, Tuple
+import time
+from typing import Any, Literal, Tuple
 
 import ccxt
 from pydantic import BaseModel
@@ -154,6 +155,52 @@ def get_contract_size(exchange: ccxt.Exchange, symbol: str) -> Decimal:
     ccxt_symbol = get_ccxt_symbol(symbol)
     return Decimal(str(exchange.market(ccxt_symbol)['contractSize']))
 
+
+class ExchangeStatus(BaseModel):
+    ok: bool
+    status: Literal['ok'] | Literal['maintenance'] | Literal['error']
+    msg: str
+
+
+def check_exchange_status(exchange: ccxt.Exchange, retry=1) -> ExchangeStatus:
+    if retry < 1:
+        retry = 1
+
+    match exchange:
+        case ccxt.binanceusdm():
+            while retry > 0:
+                try:
+                    status = exchange.fetch_status()
+                    break
+                except Exception as e:
+                    retry -= 1
+                    if retry <= 0:
+                        return ExchangeStatus(ok=False, status='error', msg=str(e))
+
+            if status['status'] != 'ok':
+                return ExchangeStatus(ok=False, status='maintenance', msg=status['msg'])
+
+            return ExchangeStatus(ok=True, status='ok', msg='')
+        case ccxt.okex():
+            while retry > 0:
+                try:
+                    status = exchange.publicGetSystemStatus()
+                    break
+                except Exception as e:
+                    retry -= 1
+                    if retry <= 0:
+                        return ExchangeStatus(ok=False, status='error', msg=str(e))
+
+            if status['code'] != '0':
+                return ExchangeStatus(ok=False, status='error', msg=status['msg'])
+
+            for s in status['data']:
+                # return false if websocket and trading api is on maintenance
+                if s['state'] == 'ongoing' and s['serviceType'] in ['0', '5', '8', '9']:
+                    return ExchangeStatus(ok=False, status='maintenance', msg=s['title'])
+
+            return ExchangeStatus(ok=True, status='ok', msg='')
+            
 
 __ALL__ = [
     'place_order',
