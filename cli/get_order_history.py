@@ -378,7 +378,7 @@ def main(env: str, since: str):
     gen_order_csv(okex)
     gen_order_csv(binance)
 
-    analysis_orders()
+    # analysis_orders()
 
 
 if __name__ == "__main__":
