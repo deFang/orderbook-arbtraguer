@@ -117,7 +117,8 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
     # set for finished exiting tasks
     _cleared = False
     mark_clear_time = None
-    is_canceled_by_timeout = False
+    is_filled = False
+    is_canceled_by_program = False
 
     while not _cleared:
         if ctx.is_canceled() and not _clear:
@@ -157,6 +158,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
 
             if event.status == OrderStatus.filled:
                 is_canceled_or_filled = True
+                is_filled = True
                 break
 
         # make market order
@@ -186,12 +188,12 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                     logging.error(f'place taker order failed: {type(e)}')
                     logging.exception(e)
 
-        if is_canceled_or_filled:
+        if is_canceled_or_filled or is_canceled_by_program:
             _clear = True
 
         # clear and exit
         if _clear:
-            if not is_canceled_or_filled:
+            if (not is_canceled_or_filled) or is_canceled_by_program:
                 if mark_clear_time is None:
                     mark_clear_time = time.time()
                     continue
@@ -203,7 +205,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                     continue
             # check position before exit
             # if not is_canceled_or_filled:
-            if (not is_canceled_or_filled) or is_canceled_by_timeout:
+            if (not is_filled):
                 order_info = _get_order(maker_exchange, symbol, maker_order_id)
                 if order_info:
                     filled_qty = Decimal(order_info.filled)
@@ -263,7 +265,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             ok = cancel_order_once(maker_exchange, symbol, maker_order_id)
             if ok:
                 _clear = True
-                is_canceled_by_timeout = True
+                is_canceled_by_program = True
                 continue
 
         # check if price delta is less than cancel_order_threshold on taker side
@@ -279,6 +281,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             ok = cancel_order_once(maker_exchange, symbol, maker_order_id)
             if ok:
                 _clear = True
+                is_canceled_by_program = True
 
         # match signal.taker_side:
         #     case 'buy':
