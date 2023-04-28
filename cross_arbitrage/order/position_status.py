@@ -120,7 +120,6 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             for exchange_name in exchanges.keys():
                 position = get_position_status(rc, exchange_name, symbol)
                 positions.append((exchange_name, position))
-
             min_qty = get_symbol_min_amount(exchanges, symbol)
             if positions[0][1] is None and positions[1][1] is None:
                 continue
@@ -134,6 +133,23 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                     continue
                 else:
                     delta = positions[0][1].qty
+            elif positions[0][1].direction == positions[1][1].direction:
+                # both position have the same direction
+                pos_0 = positions[0][1]
+                pos_1 = positions[1][1]
+                side_0 = 'sell' if pos_0.direction == PositionDirection.long else 'buy'
+                side_1 = 'sell' if pos_1.direction == PositionDirection.long else 'buy'
+                if pos_0.qty >= min_qty:
+                    market_order(exchanges[positions[0][0]], symbol,
+                                 side_0, pos_0.qty,
+                                 client_id=f"{order_prefix}T{int(time.time() * 1000)}",
+                                 reduce_only=True)
+                if pos_1.qty >= min_qty:
+                    market_order(exchanges[positions[1][0]], symbol,
+                                 side_1, pos_1.qty,
+                                 client_id=f"{order_prefix}T{int(time.time() * 1000)}",
+                                 reduce_only=True)
+                continue
             else:
                 delta = positions[0][1].qty - positions[1][1].qty
 
