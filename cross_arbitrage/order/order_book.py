@@ -116,7 +116,7 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     low_cancel_threshold = threshold.short_threshold.cancel_decrease_position_threshold
 
             # if maker exchange price if higher
-            if float(maker_ob['asks'][0][0]) > float(taker_ob['asks'][0][0]) * (1 + high_delta):
+            if float(maker_ob['asks'][0][0]) > float(taker_ob['asks'][0][0]) * float(1 + high_delta):
                 qty = Decimal(taker_ob['asks'][0][1])
                 if position_qty is not None:
                     qty = min(qty, position_qty)
@@ -132,12 +132,12 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     taker_exchange=taker_exchange,
                     taker_price=Decimal(taker_ob['asks'][0][0]),
                     orderbook_ts=maker_ob['ts'],
-                    cancel_order_threshold=high_cancel_threshold,
+                    cancel_order_threshold=float(high_cancel_threshold),
                     maker_position=maker_symbol_position,
                     is_reduce_position = is_reduce_position,
                 )
             # else if maker exchange price if lower
-            elif float(maker_ob['bids'][0][0]) < float(taker_ob['bids'][0][0]) * (1 + low_delta):
+            elif float(maker_ob['bids'][0][0]) < float(taker_ob['bids'][0][0]) * float(1 + low_delta):
                 qty = Decimal(taker_ob['bids'][0][1])
                 if position_qty is not None:
                     qty = min(qty, position_qty)
@@ -153,7 +153,7 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     taker_exchange=taker_exchange,
                     taker_price=Decimal(taker_ob['bids'][0][0]),
                     orderbook_ts=maker_ob['ts'],
-                    cancel_order_threshold=low_cancel_threshold,
+                    cancel_order_threshold=float(low_cancel_threshold),
                     maker_position=maker_symbol_position,
                     is_reduce_position = is_reduce_position,
                 )
