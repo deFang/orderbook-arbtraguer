@@ -19,6 +19,7 @@ from .config import OrderConfig
 from .order_book import fetch_orderbooks_from_redis, get_signal_from_orderbooks
 from .signal_dealer import deal_loop
 from .check_exchange_status import check_exchange_status_loop
+from .threshold import Threshold
 
 
 def start_loop(ctx: CancelContext, config: OrderConfig):
@@ -79,14 +80,30 @@ def start_loop(ctx: CancelContext, config: OrderConfig):
     )
     check_exchange_status_thread.start()
 
+    thresholds: dict[str, Threshold] = {}
+    okex_threshold = Threshold(config, rc, makeonly_exchange="okex")
+    thresholds["okex"] = okex_threshold
+    binance_threshold = Threshold(config, rc, makeonly_exchange="binance")
+    thresholds["binance"] = binance_threshold
+
+    for threshold in thresholds.values():
+        t = threading.Thread(
+            target=threshold.refresh_loop,
+            args=(ctx, 5),
+            name=f"{threshold.makeonly_exchange}_threshold_refresh_loop_thread",
+            daemon=True,
+        )
+        t.start()
+
     # start main loop
-    order_loop(ctx, config, exchanges, rc)
+    order_loop(ctx, config, thresholds, exchanges, rc)
 
     # clear orders when exit
     clear_orders(ctx, symbols, exchanges)
 
 
-def order_loop(ctx: CancelContext, config: OrderConfig, exchanges: Dict[str, ccxt.Exchange], rc: redis.Redis):
+def order_loop(ctx: CancelContext, config: OrderConfig, thresholds: dict[str, Threshold], 
+               exchanges: Dict[str, ccxt.Exchange], rc: redis.Redis):
     last_id = '$'
     ob_count = 0
     st = 0
@@ -97,7 +114,7 @@ def order_loop(ctx: CancelContext, config: OrderConfig, exchanges: Dict[str, ccx
             continue
         last_id = orderbooks[-1][0]
         signals = get_signal_from_orderbooks(
-            rc, exchanges, config, list(map(lambda x: x[1], orderbooks)))
+            rc, exchanges, config, thresholds, list(map(lambda x: x[1], orderbooks)))
         if not signals:
             continue
 
