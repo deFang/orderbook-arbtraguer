@@ -68,16 +68,24 @@ class Threshold:
             if c.symbol_name not in dyn_thresholds:
                 self.symbol_thresholds[c.symbol_name] = SymbolConfig(
                     long_threshold=ThresholdConfig(
-                        increase_position_threshold=c.long_threshold_data.increase_position_threshold,
-                        decrease_position_threshold=c.long_threshold_data.decrease_position_threshold,
-                        cancel_increase_position_threshold=c.long_threshold_data.cancel_increase_position_threshold,
-                        cancel_decrease_position_threshold=c.long_threshold_data.cancel_decrease_position_threshold,
+                        increase_position_threshold=Decimal(
+                            str(c.long_threshold_data.increase_position_threshold)),
+                        decrease_position_threshold=Decimal(
+                            str(c.long_threshold_data.decrease_position_threshold)),
+                        cancel_increase_position_threshold=Decimal(
+                            str(c.long_threshold_data.cancel_increase_position_threshold)),
+                        cancel_decrease_position_threshold=Decimal(
+                            str(c.long_threshold_data.cancel_decrease_position_threshold)),
                     ),
                     short_threshold=ThresholdConfig(
-                        increase_position_threshold=c.short_threshold_data.increase_position_threshold,
-                        decrease_position_threshold=c.short_threshold_data.decrease_position_threshold,
-                        cancel_increase_position_threshold=c.short_threshold_data.cancel_increase_position_threshold,
-                        cancel_decrease_position_threshold=c.short_threshold_data.cancel_decrease_position_threshold,
+                        increase_position_threshold=Decimal(
+                            str(c.short_threshold_data.increase_position_threshold)),
+                        decrease_position_threshold=Decimal(
+                            str(c.short_threshold_data.decrease_position_threshold)),
+                        cancel_increase_position_threshold=Decimal(
+                            str(c.short_threshold_data.cancel_increase_position_threshold)),
+                        cancel_decrease_position_threshold=Decimal(
+                            str(c.short_threshold_data.cancel_decrease_position_threshold)),
                     ),
                 )
             else:
@@ -101,16 +109,24 @@ class Threshold:
                 symbol_name, self.makeonly_exchange)
             ret = SymbolConfig(
                 long_threshold=ThresholdConfig(
-                    increase_position_threshold=c.long_threshold_data.increase_position_threshold,
-                    decrease_position_threshold=c.long_threshold_data.decrease_position_threshold,
-                    cancel_increase_position_threshold=c.long_threshold_data.cancel_increase_position_threshold,
-                    cancel_decrease_position_threshold=c.long_threshold_data.cancel_decrease_position_threshold,
+                    increase_position_threshold=Decimal(
+                        str(c.long_threshold_data.increase_position_threshold)),
+                    decrease_position_threshold=Decimal(
+                        str(c.long_threshold_data.decrease_position_threshold)),
+                    cancel_increase_position_threshold=Decimal(
+                        str(c.long_threshold_data.cancel_increase_position_threshold)),
+                    cancel_decrease_position_threshold=Decimal(
+                        str(c.long_threshold_data.cancel_decrease_position_threshold)),
                 ),
                 short_threshold=ThresholdConfig(
-                    increase_position_threshold=c.short_threshold_data.increase_position_threshold,
-                    decrease_position_threshold=c.short_threshold_data.decrease_position_threshold,
-                    cancel_increase_position_threshold=c.short_threshold_data.cancel_increase_position_threshold,
-                    cancel_decrease_position_threshold=c.short_threshold_data.cancel_decrease_position_threshold,
+                    increase_position_threshold=Decimal(
+                        str(c.short_threshold_data.increase_position_threshold)),
+                    decrease_position_threshold=Decimal(
+                        str(c.short_threshold_data.decrease_position_threshold)),
+                    cancel_increase_position_threshold=Decimal(
+                        str(c.short_threshold_data.cancel_increase_position_threshold)),
+                    cancel_decrease_position_threshold=Decimal(
+                        str(c.short_threshold_data.cancel_decrease_position_threshold)),
                 ),
             )
         return ret
