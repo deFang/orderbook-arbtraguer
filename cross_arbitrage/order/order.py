@@ -10,6 +10,7 @@ from cross_arbitrage.order.globals import get_order_status_stream_is_ready
 from cross_arbitrage.order.order_status import start_order_status_stream_mainloop
 from cross_arbitrage.order.position_status import align_position_loop, refresh_position_loop
 import redis
+from cross_arbitrage.order.process_threshold import process_threshold_mainloop
 
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.utils.exchange import create_exchange
@@ -79,6 +80,14 @@ def start_loop(ctx: CancelContext, config: OrderConfig):
         daemon=True,
     )
     check_exchange_status_thread.start()
+
+    process_threshold_thread = threading.Thread(
+        target=process_threshold_mainloop,
+        args=(ctx, config),
+        name="process_threshold_thread_loop_thread",
+        daemon=True,
+    )
+    process_threshold_thread.start()
 
     thresholds: dict[str, Threshold] = {}
     okex_threshold = Threshold(config, rc, makeonly_exchange="okex")

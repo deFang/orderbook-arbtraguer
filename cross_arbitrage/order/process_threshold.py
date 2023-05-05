@@ -7,14 +7,14 @@ import redis
 from cross_arbitrage.fetch.fetch_funding_rate import get_funding_rate_key
 from cross_arbitrage.order.config import OrderConfig
 from cross_arbitrage.order.threshold import SymbolConfig, ThresholdConfig
-from cross_arbitrage.utils.context import sleep_with_context
+from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 
 
 def get_threshold_key(exchange):
     return f"order:thresholds:{exchange}"
 
 
-def process_threshold_mainloop(config: OrderConfig, ctx: CancelContext):
+def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
     # init redis client
     rc = redis.Redis.from_url(
         config.redis.url, encoding="utf-8", decode_responses=True
