@@ -45,7 +45,7 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                 try:
                     res = {
                         "exchange": ex_name,
-                        "symbol": symbol,
+                        "symbol": get_common_symbol_from_ccxt(symbol),
                         "delta": None,
                     }
                     funding_info = exchanges[ex_name].fetch_funding_rate(
