@@ -142,7 +142,7 @@ def sync_symbols_orders(exchange, symbols, since, until, dir="data"):
         f.write(json.dumps(orders_raw))
 
 
-def gen_order_csv(exchange):
+def gen_order_csv(exchange, env):
     json_name = f"{DATA_DIR}/{exchange.ex_name}_raw.json"
     with open(json_name, "r") as f:
         orders_raw = json.load(f)
@@ -195,7 +195,7 @@ def gen_order_csv(exchange):
                 )
 
             save_dictlist_to_csv(
-                f"{DATA_DIR}/{exchange.ex_name}_orders_{date_now_str()}.csv",
+                f"{DATA_DIR}/{env}_{exchange.ex_name}_orders_{date_now_str()}.csv",
                 headers=[
                     "id",
                     "clientOrderId",
@@ -244,7 +244,7 @@ def gen_order_csv(exchange):
             ]
 
             save_dictlist_to_csv(
-                f"{DATA_DIR}/{exchange.ex_name}_orders_{date_now_str()}.csv",
+                f"{DATA_DIR}/{env}_{exchange.ex_name}_orders_{date_now_str()}.csv",
                 headers=[
                     "id",
                     "clientOrderId",
@@ -267,12 +267,12 @@ def gen_order_csv(exchange):
             )
 
 
-def analysis_orders():
+def analysis_orders(env):
     data_path = join(get_project_root(), DATA_DIR)
-    df1 = pd.read_csv(f"{data_path}/binance_orders_{date_now_str()}.csv")
+    df1 = pd.read_csv(f"{data_path}/{env}_binance_orders_{date_now_str()}.csv")
     df1 = df1.drop(columns=["timeInForce"])
 
-    df2 = pd.read_csv(f"{data_path}/okex_orders_{date_now_str()}.csv")
+    df2 = pd.read_csv(f"{data_path}/{env}_okex_orders_{date_now_str()}.csv")
 
     df3 = pd.concat([df1, df2]).sort_values(
         ["timestamp", "clientOrderId"], ascending=[True, True]
@@ -313,6 +313,22 @@ def analysis_orders():
     df5.index.rename("标的", inplace=True)
 
     print(df5)
+
+def gen_funding_csv(exchange, since, env):
+    res = exchange.fetch_funding_history(since=since)
+    save_dictlist_to_csv(
+        f"{DATA_DIR}/{env}_{exchange.ex_name}_funding_{date_now_str()}.csv",
+        headers=[
+            "id",
+            "symbol",
+            "timestamp",
+            "datetime",
+            "amount",
+            "code",
+        ],
+        dictlist=res,
+        file_mode="w",
+    )
 
 
 @click.command()
@@ -375,10 +391,13 @@ def main(env: str, since: str):
     )
     sync_symbols_orders(okex, symbols, since=since, until=until, dir=DATA_DIR)
 
-    gen_order_csv(okex)
-    gen_order_csv(binance)
+    gen_order_csv(okex, env=env)
+    gen_order_csv(binance, env=env)
 
-    # analysis_orders()
+    gen_funding_csv(okex, since,env=env)
+    gen_funding_csv(binance, since, env=env)
+
+    # analysis_orders(env)
 
 
 if __name__ == "__main__":

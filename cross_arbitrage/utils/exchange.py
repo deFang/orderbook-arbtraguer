@@ -7,10 +7,12 @@ from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
 
 
 def create_exchange(params: AccountConfig, proxy: dict = None) -> ccxt.Exchange:
-    c = {
-        'apiKey': params.api_key,
-        'secret': params.secret,
-    }
+    c = {}
+    if params.api_key and params.secret:
+        c = {
+            'apiKey': params.api_key,
+            'secret': params.secret,
+        }
     if proxy:
         c['proxies'] = proxy
 
@@ -18,7 +20,8 @@ def create_exchange(params: AccountConfig, proxy: dict = None) -> ccxt.Exchange:
         case 'binance':
             return ccxt.binanceusdm(c)
         case 'okex':
-            c['password'] = params.password
+            if params.password:
+                c['password'] = params.password
             return ccxt.okex(c)
         case _ as x:
             raise Exception(f'unknown exchange: {x}')

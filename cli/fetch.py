@@ -7,11 +7,13 @@ from os.path import exists, join
 import click
 
 from cross_arbitrage.fetch.config import get_config
+from cross_arbitrage.fetch.fetch_funding_rate import fetch_funding_rate_mainloop
 from cross_arbitrage.fetch.fetch_orderbook import fetch_orderbook_mainloop
 from cross_arbitrage.fetch.agg_orderbook import agg_orderbook_mainloop
 from cross_arbitrage.fetch.utils.common import base_name, get_project_root
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.utils.logger import init_logger
+from cross_arbitrage.utils.symbol_mapping import init_symbol_mapping_from_file
 
 
 # entry
@@ -37,6 +39,8 @@ def main(env: str):
     logger.setLevel(getattr(logging, config.log.level.upper()))
 
     config.print()
+
+    init_symbol_mapping_from_file(join(get_project_root(), "configs/common_config.json"))
 
     # vars
     cancel_ctx = CancelContext()
@@ -68,6 +72,15 @@ def main(env: str):
             target=agg_orderbook_mainloop,
             args=(config, cancel_ctx),
             name="agg_orderbook_mainloop_thread",
+            daemon=True,
+        )
+    )
+
+    thread_objects.append(
+        threading.Thread(
+            target=fetch_funding_rate_mainloop,
+            args=(config, cancel_ctx),
+            name="fetch_funding_rate_mainloop_thread",
             daemon=True,
         )
     )
