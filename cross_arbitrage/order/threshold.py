@@ -1,5 +1,6 @@
 from decimal import Decimal
 import logging
+import pprint
 import time
 import orjson
 import pydantic
@@ -92,6 +93,7 @@ class Threshold:
                 self.symbol_thresholds[c.symbol_name] = dyn_thresholds[c.symbol_name]
 
     def refresh_loop(self, ctx: CancelContext, interval=1):
+        count = 0
         while not ctx.is_canceled():
             start_time = time.time()
             try:
@@ -99,6 +101,11 @@ class Threshold:
             except Exception as e:
                 logging.error('refresh_thresholds error: {}'.format(e))
                 logging.exception(e)
+
+            if self.config.debug:
+                if count % 300 == 0:
+                    logging.info('thresholds: {}'.format(pprint.pformat(self.symbol_thresholds)))
+                count += 1
             sleep_time = interval - (time.time() - start_time)
             sleep_with_context(ctx, sleep_time)
 
