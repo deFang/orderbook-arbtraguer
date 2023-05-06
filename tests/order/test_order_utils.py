@@ -7,7 +7,7 @@ from cross_arbitrage.fetch.utils.common import get_project_root
 from cross_arbitrage.order.config import get_config
 from cross_arbitrage.order.market import align_qty
 from cross_arbitrage.utils.exchange import create_exchange, get_symbol_min_amount
-from cross_arbitrage.utils.order import normalize_exchanges_order_qty, normalize_order_qty
+from cross_arbitrage.utils.order import get_last_funding_rate, normalize_exchanges_order_qty, normalize_order_qty
 from cross_arbitrage.utils.symbol_mapping import init_symbol_mapping_from_file
 
 
@@ -76,3 +76,11 @@ def test_get_symbol_min_amount(config):
 
     assert str(min_amount) == "0.1"
 
+
+def test_get_last_funding_rate(config):
+    symbol = "BNB/USDT:USDT"
+    res = get_last_funding_rate('okex', symbol, config)
+    assert res['funding_rate'] == '-0.0001043272464764'
+
+    res = get_last_funding_rate('binance', symbol, config)
+    assert res['funding_rate'] == '-0.00008753'

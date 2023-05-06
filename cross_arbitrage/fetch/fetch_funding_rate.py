@@ -9,6 +9,7 @@ from cross_arbitrage.fetch.config import FetchConfig
 from cross_arbitrage.fetch.utils.common import now_s
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from cross_arbitrage.utils.exchange import create_exchange
+from cross_arbitrage.utils.order import get_last_funding_rate
 from cross_arbitrage.utils.symbol_mapping import (get_ccxt_symbol,
                                                   get_common_symbol_from_ccxt)
 
@@ -61,11 +62,14 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                             ex_name, get_common_symbol_from_ccxt(symbol)
                         )
                     )
-                    previous_funding_info = {}
+                    previous_funding_info = None
                     if previous_funding_info_raw:
                         previous_funding_info = json.loads(
                             previous_funding_info_raw
                         )
+                    else:
+                        previous_funding_info = get_last_funding_rate(ex_name, symbol, config)
+                    if previous_funding_info:
                         if (
                             previous_funding_info["funding_timestamp"]
                             + 60 * 60 * 8 * 1000

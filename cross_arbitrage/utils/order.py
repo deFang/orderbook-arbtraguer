@@ -4,13 +4,15 @@ from typing import List, Union
 
 import ccxt
 import redis
+from cross_arbitrage.fetch.utils.common import now_ms
 
 from cross_arbitrage.order.config import OrderConfig
 from cross_arbitrage.order.globals import exchanges
 from cross_arbitrage.order.model import OrderSide
 from cross_arbitrage.order.order_book import OrderSignal
 from cross_arbitrage.order.position_status import PositionDirection
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
+from cross_arbitrage.utils.exchange import create_exchange
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt
 
 def order_mode_is_pending(ctx):
     return ctx.get('order_mode') == 'pending'
@@ -109,3 +111,22 @@ def get_order_qty(signal: OrderSignal, rc: redis.Redis, config: OrderConfig):
     except Exception as ex:
         logging.exception(ex)
         raise ex
+
+def get_last_funding_rate(exchange_name: str, ccxt_symbol: str, config: OrderConfig):
+    now = now_ms()
+    since = now - now % (8* 60 * 60 * 1000)
+
+    exchange = create_exchange(config.exchanges[exchange_name])
+
+    res = exchange.fetch_funding_rate_history(ccxt_symbol, since = since)
+    if res and len(res) > 0:
+        return {
+                "exchange": exchange_name,
+                "symbol": get_common_symbol_from_ccxt(res[0]['symbol']),
+                "funding_rate": str(Decimal(str(res[0]['fundingRate']))),
+                "funding_timestamp": res[0]['timestamp'],
+                "delta": None,
+                }
+    else:
+        return None
+
