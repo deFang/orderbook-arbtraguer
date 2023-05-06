@@ -77,6 +77,11 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                                     previous_funding_info["funding_rate"]
                                 )
                             )
+                        elif (
+                            previous_funding_info["funding_timestamp"]
+                            == res["funding_timestamp"]
+                        ):
+                            res["delta"] = previous_funding_info["delta"]
                     logging.info(
                         f"{ex_name} {symbol} funding_info={res} previous_funding_info={previous_funding_info}"
                     )
