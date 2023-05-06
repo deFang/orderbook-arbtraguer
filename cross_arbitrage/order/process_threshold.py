@@ -88,7 +88,7 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
                                     - long.decrease_position_threshold
                                 )
                                 * Decimal(
-                                    config.default_increase_position_threshold
+                                    config.default_cancel_increase_position_ratio
                                 )
                             )
                             long.cancel_decrease_position_threshold = (
@@ -98,7 +98,7 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
                                     - long.decrease_position_threshold
                                 )
                                 * Decimal(
-                                    config.default_decrease_position_threshold
+                                    config.default_cancel_decrease_position_ratio
                                 )
                             )
                         elif delta < 0:
@@ -113,7 +113,7 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
                                     - short.decrease_position_threshold
                                 )
                                 * Decimal(
-                                    config.default_increase_position_threshold
+                                    config.default_cancel_increase_position_ratio
                                 )
                             )
                             short.cancel_decrease_position_threshold = (
@@ -123,7 +123,7 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
                                     - short.decrease_position_threshold
                                 )
                                 * Decimal(
-                                    config.default_decrease_position_threshold
+                                    config.default_cancel_decrease_position_ratio
                                 )
                             )
 
