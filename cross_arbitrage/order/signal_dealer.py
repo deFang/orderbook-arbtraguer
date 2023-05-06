@@ -119,6 +119,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
     mark_clear_time = None
     is_filled = False
     is_canceled_by_program = False
+    new_trade = False
 
     while not _cleared:
         if ctx.is_canceled() and not _clear:
@@ -144,7 +145,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             logging.exception(e)
 
         is_canceled_or_filled = False
-        new_trade = False
+
         for item in items:
             data = orjson.loads(item)
             event = OrderModel.parse_obj(data)
@@ -184,6 +185,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                                          client_id=taker_client_id)
                     followed_qty += Decimal(str(order['amount'])) * \
                         taker_exchange_contract_size
+                    new_trade = False
                 except Exception as e:
                     logging.error(f'place taker order failed: {type(e)}')
                     logging.exception(e)
@@ -205,7 +207,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                     continue
             # check position before exit
             # if not is_canceled_or_filled:
-            if (not is_filled):
+            if (not is_filled) or new_trade:
                 order_info = _get_order(maker_exchange, symbol, maker_order_id)
                 if order_info:
                     filled_qty = Decimal(order_info.filled)
