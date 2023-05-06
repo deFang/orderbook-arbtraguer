@@ -68,12 +68,20 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                             previous_funding_info_raw
                         )
                     else:
-                        previous_funding_info = get_last_funding_rate(ex_name, symbol, config)
+                        previous_funding_info = get_last_funding_rate(
+                            ex_name, symbol, config
+                        )
                     if previous_funding_info:
+                        tol = 1000
                         if (
                             previous_funding_info["funding_timestamp"]
                             + 60 * 60 * 8 * 1000
-                            == res["funding_timestamp"]
+                            + tol
+                            >= res["funding_timestamp"]
+                            and previous_funding_info["funding_timestamp"]
+                            + 60 * 60 * 8 * 1000
+                            - tol
+                            <= res["funding_timestamp"]
                         ):
                             res["delta"] = str(
                                 Decimal(res["funding_rate"])
