@@ -3,7 +3,7 @@ from typing import Dict
 from decimal import Decimal
 import ccxt
 from cross_arbitrage.config.account import AccountConfig
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_exchange_symbol_from_exchange
 
 
 def create_exchange(params: AccountConfig, proxy: dict = None) -> ccxt.Exchange:
@@ -27,16 +27,16 @@ def create_exchange(params: AccountConfig, proxy: dict = None) -> ccxt.Exchange:
             raise Exception(f'unknown exchange: {x}')
 
 def get_symbol_min_amount(exchanges: Dict[str, ccxt.Exchange], symbol:str):
-    ccxt_symbol = get_ccxt_symbol(symbol)
     ret = {}
     for ex_name, ex in exchanges.items():
         ex.load_markets()
-        symbol_info = ex.market(ccxt_symbol)
+        exchange_symbol = get_exchange_symbol_from_exchange(ex, symbol)
+        symbol_info = ex.market(exchange_symbol.name)
         match ex:
             case ccxt.okex():
-                ret[ex_name] = Decimal(str(symbol_info['contractSize']))
+                ret[ex_name] = Decimal(str(symbol_info['contractSize'])) * exchange_symbol.multiplier
             case ccxt.binanceusdm():
-                ret[ex_name] = Decimal(str(10**(-symbol_info['precision']['amount'])))
+                ret[ex_name] = Decimal(str(10**(-symbol_info['precision']['amount']))) * exchange_symbol.multiplier
             case _:
                 raise Exception(f"unsupport exchange: {ex_name}")
     return max(list(ret.values()))

@@ -5,7 +5,7 @@ from typing import Any, Literal, Tuple
 import ccxt
 from pydantic import BaseModel
 
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_exchange_symbol_from_exchange
 
 
 class SimpleMarginInfo(BaseModel):
@@ -79,7 +79,8 @@ def place_order(exchange: ccxt.Exchange,
                 client_id=None,
                 align_qty=True,
                 reduce_only=False):
-    ccxt_symbol = get_ccxt_symbol(symbol)
+    exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
+    exchange_symbol_name = exchange_symbol.name
 
     params = {}
     if client_id:
@@ -89,19 +90,19 @@ def place_order(exchange: ccxt.Exchange,
         params['reduceOnly'] = True
 
     # qty to market amount
-    m = exchange.market(ccxt_symbol)
-    amount = qty / Decimal(str(m['contractSize']))
+    m = exchange.market(exchange_symbol_name)
+    amount = qty / Decimal(str(m['contractSize'])) / exchange_symbol.multiplier
 
     if align_qty:
-        amount = exchange.amount_to_precision(ccxt_symbol, amount)
+        amount = exchange.amount_to_precision(exchange_symbol_name, amount)
 
     match method:
         case 'market':
-            return exchange.create_order(symbol=ccxt_symbol, type='market', side=side, amount=amount, params=params)
+            return exchange.create_order(symbol=exchange_symbol_name, type='market', side=side, amount=amount, params=params)
         case 'limit':
-            return exchange.create_order(symbol=ccxt_symbol, type='limit', side=side, amount=amount, price=price, params=params)
+            return exchange.create_order(symbol=exchange_symbol_name, type='limit', side=side, amount=amount, price=price, params=params)
         case 'maker_only':
-            return exchange.create_post_only_order(symbol=ccxt_symbol, type='limit', side=side, amount=amount, price=price, params=params)
+            return exchange.create_post_only_order(symbol=exchange_symbol_name, type='limit', side=side, amount=amount, price=price, params=params)
 
 
 def market_order(exchange: ccxt.Exchange,
@@ -127,33 +128,35 @@ def maker_only_order(exchange: ccxt.Exchange,
 
 def cancel_order(exchange: ccxt.Exchange, order_id: str, symbol: str = None):
     if symbol:
-        symbol = get_ccxt_symbol(symbol)
+        symbol = get_exchange_symbol_from_exchange(exchange, symbol).name
     return exchange.cancel_order(order_id, symbol)
 
 
 def align_qty(exchange: ccxt.Exchange, symbol: str, qty: Decimal) -> Tuple[Decimal, Decimal]:
-    ccxt_symbol = get_ccxt_symbol(symbol)
+    exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
+    exchange_symbol_name = exchange_symbol.name
+    exchange_qty = qty / exchange_symbol.multiplier
     match exchange:
         case ccxt.okex():
             contract_size = Decimal(
-                str(exchange.market(ccxt_symbol)['contractSize']))
-            r1 = qty.quantize(contract_size)
+                str(exchange.market(exchange_symbol_name)['contractSize']))
+            r1 = exchange_qty.quantize(contract_size)
             r2 = contract_size - r1
-            return r1, r2
+            return r1 * exchange_symbol.multiplier, r2 * exchange_symbol.multiplier
         case ccxt.binanceusdm():
             # market_precesion = exchange.market(
             #     ccxt_symbol)['precision']['amount']
-            r1 = Decimal(str(exchange.amount_to_precision(ccxt_symbol, qty)))
-            r2 = qty - r1
-            return r1, r2
+            r1 = Decimal(str(exchange.amount_to_precision(exchange_symbol_name, exchange_qty)))
+            r2 = exchange_qty - r1
+            return r1 * exchange_symbol.multiplier, r2 * exchange_symbol.multiplier
         case _:
             raise ccxt.ExchangeNotAvailable(
                 f'align qty not support exchange: {exchange.id}')
 
 
 def get_contract_size(exchange: ccxt.Exchange, symbol: str) -> Decimal:
-    ccxt_symbol = get_ccxt_symbol(symbol)
-    return Decimal(str(exchange.market(ccxt_symbol)['contractSize']))
+    exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
+    return Decimal(str(exchange.market(exchange_symbol.name)['contractSize']))
 
 
 class ExchangeStatus(BaseModel):
