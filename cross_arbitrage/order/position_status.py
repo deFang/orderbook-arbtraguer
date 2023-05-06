@@ -196,5 +196,9 @@ def align_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str
 
     while not ctx.is_canceled():
         start_time = time.time()
-        align_position(rc, exchanges, symbols, config)
+        try:
+            align_position(rc, exchanges, symbols, config)
+        except Exception as ex:
+            logging.error(ex)
+            logging.exception(ex)
         sleep_with_context(ctx, 30 - (time.time() - start_time))
