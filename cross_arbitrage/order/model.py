@@ -145,6 +145,6 @@ def normalize_common_order(info, ex_name) -> Order:
         ),
         price=str(Decimal(info["price"]) / exchange_symbol.multiplier),
         cost=info["cost"],
-        average_price=str(Decimal(info["average"]) / exchange_symbol.multiplier) if info["fillPx"] is not None else None,
+        average_price=str(Decimal(info["average"]) / exchange_symbol.multiplier) if info["average"] is not None else None,
         status=status,
     )
