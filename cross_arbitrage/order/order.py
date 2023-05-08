@@ -204,15 +204,15 @@ def set_leverage(ctx: CancelContext, exchanges: Dict[str, ccxt.Exchange], symbol
         exchange: ccxt.binanceusdm | ccxt.okex
         try:
             for symbol in symbols:
-                ccxt_symbol = get_ccxt_symbol(symbol)
-                exchange.set_margin_mode(marginMode='cross', symbol=ccxt_symbol)
+                exchange_symbol_name = get_exchange_symbol_from_exchange(exchange, symbol).name
+                exchange.set_margin_mode(marginMode='cross', symbol=exchange_symbol_name)
         except Exception as e:
             logging.error(f"set margin mode on {exchange_name} failed: {e}")
 
         try:
             for symbol in symbols:
-                ccxt_symbol = get_ccxt_symbol(symbol)
-                exchange.set_leverage(leverage=leverage, symbol=ccxt_symbol)
+                exchange_symbol_name = get_exchange_symbol_from_exchange(exchange, symbol).name
+                exchange.set_leverage(leverage=leverage, symbol=exchange_symbol_name)
                 logging.info(
                     f"===> set leverage on {exchange_name} for {symbol} to {leverage}")
         except Exception as e:
