@@ -1,9 +1,13 @@
 import time
 from typing import Dict
 from decimal import Decimal
+from functools import lru_cache
+
 import ccxt
 from cross_arbitrage.config.account import AccountConfig
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_exchange_symbol_from_exchange
+
+_exchanges = {}
 
 
 def create_exchange(params: AccountConfig, proxy: dict = None) -> ccxt.Exchange:
@@ -52,6 +56,27 @@ def get_exchange_name(exchange: ccxt.Exchange) -> str:
 
 
 def get_bag_size(exchange: ccxt.Exchange, symbol: str) -> Decimal:
+    exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
+    exchange_symbol_name = exchange_symbol.name
+    
+    symbol_info = exchange.market(exchange_symbol_name)
+    return Decimal(str(symbol_info['contractSize'])) * exchange_symbol.multiplier
+
+
+@lru_cache
+def get_bag_size_by_ex_name(ex_name: str, symbol: str) -> Decimal:
+    exchange: ccxt.Exchange = _exchanges.get(ex_name, None)
+    if exchange is None:
+        match ex_name:
+            case 'okex':
+                exchange = ccxt.okex()
+            case 'binance':
+                exchange = ccxt.binanceusdm()
+            case _:
+                raise ValueError("unsupport exchange: {}".format(ex_name))
+        _exchanges[ex_name] = exchange
+        exchange.load_markets()
+    
     exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
     exchange_symbol_name = exchange_symbol.name
     

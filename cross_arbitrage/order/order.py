@@ -181,7 +181,7 @@ def clear_orders(ctx: CancelContext, symbols: List[str], exchanges: Dict[str, cc
     for exchange_name, exchange in exchanges.items():
         logging.info(f"==> cancel orders on {exchange_name}")
         for symbol in symbols:
-            exchange_symbol_name = get_exchange_symbol_from_exchange(exchange, symbol)
+            exchange_symbol_name = get_exchange_symbol_from_exchange(exchange, symbol).name
             try:
                 match exchange:
                     case ccxt.okex():
