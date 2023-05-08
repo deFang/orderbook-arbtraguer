@@ -70,7 +70,7 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                         )
                     else:
                         previous_funding_info = get_last_funding_rate(
-                            ex_name, exchange_symbol_name, config
+                            ex_name, symbol, config
                         )
                     if previous_funding_info:
                         tol = 1000
