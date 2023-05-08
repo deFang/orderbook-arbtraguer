@@ -97,8 +97,8 @@ def normalize_okex_order(info) -> Order:
             Decimal(info["accFillSz"]) * Decimal(str(symbol_info["contractSize"])) * exchange_symbol.multiplier
         ),
         price=str(Decimal(info["px"]) / exchange_symbol.multiplier),
-        cost=str(Decimal(info["fillNotionalUsd"]) / exchange_symbol.multiplier),
-        average_price=str(Decimal(info["fillPx"]) / exchange_symbol.multiplier),
+        cost=info["fillNotionalUsd"],
+        average_price=str(Decimal(info["fillPx"]) / exchange_symbol.multiplier) if info["fillPx"] is not None else None,
         status=status,
     )
 
@@ -144,7 +144,7 @@ def normalize_common_order(info, ex_name) -> Order:
             Decimal(info["filled"]) * Decimal(str(symbol_info["contractSize"])) * exchange_symbol.multiplier
         ),
         price=str(Decimal(info["price"]) / exchange_symbol.multiplier),
-        cost=str(Decimal(info["cost"]) / exchange_symbol.multiplier),
-        average_price=str(Decimal(info["average"]) / exchange_symbol.multiplier),
+        cost=info["cost"],
+        average_price=str(Decimal(info["average"]) / exchange_symbol.multiplier) if info["fillPx"] is not None else None,
         status=status,
     )
