@@ -24,7 +24,7 @@ def _fetch_positions(self, symbols = None, params={}):
     result = []
     for i in range(0, len(positions)):
         result.append(self.parse_position(positions[i]))
-    return self.filter_by_array(result, 'symbol', symbols, False)
+    return result
 
 
 def patch():
