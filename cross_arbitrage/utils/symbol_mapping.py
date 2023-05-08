@@ -6,7 +6,7 @@ import pydantic
 
 
 class ExchangeSymbol(pydantic.BaseModel):
-    name: str | list[str]
+    name: str
     multiplier: int = 1
 
 
@@ -31,6 +31,14 @@ def init_symbol_mapping(mapping: Dict[str, Dict[str, str | dict]]):
     for common, m in mapping.items():
         mp = {}
         for exchange, symbol_info in m.items():
+            if exchange == "ccxt":
+                ccxt_symbols = symbol_info
+                if isinstance(symbol_info, str):
+                    ccxt_symbols = [symbol_info]
+                for s in ccxt_symbols:
+                    _ccxt2common[s] = common
+                continue
+            
             if isinstance(symbol_info, str):
                 mp[exchange] = ExchangeSymbol(name=symbol_info)
             elif isinstance(symbol_info, dict):
@@ -38,16 +46,6 @@ def init_symbol_mapping(mapping: Dict[str, Dict[str, str | dict]]):
             else:
                 raise ValueError("invalid symbol mapping type: {}({})".format(
                     type(symbol_info), symbol_info))
-
-        ccxt_symbol = mp.get("ccxt", None)
-        if ccxt_symbol:
-            if isinstance(ccxt_symbol.name, str):
-                ccxt_symbol_names = [ccxt_symbol.name]
-            else:
-                ccxt_symbol_names = ccxt_symbol.name
-
-            for s in ccxt_symbol_names:
-                _ccxt2common[s] = common
 
         symbol_mapping[common] = mp
 
