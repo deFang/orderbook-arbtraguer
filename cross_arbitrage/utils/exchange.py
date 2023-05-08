@@ -49,3 +49,11 @@ def get_exchange_name(exchange: ccxt.Exchange) -> str:
             return 'binance'
         case _:
             raise Exception(f"get_exchange_name: unsupport ccxt exchange {exchange.name}")
+
+
+def get_bag_size(exchange: ccxt.Exchange, symbol: str) -> Decimal:
+    exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
+    exchange_symbol_name = exchange_symbol.name
+    
+    symbol_info = exchange.market(exchange_symbol_name)
+    return Decimal(str(symbol_info['contractSize'])) * exchange_symbol.multiplier

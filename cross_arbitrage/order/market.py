@@ -4,6 +4,7 @@ from typing import Any, Literal, Tuple
 
 import ccxt
 from pydantic import BaseModel
+from cross_arbitrage.utils.exchange import get_bag_size
 
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_exchange_symbol_from_exchange
 
@@ -90,8 +91,8 @@ def place_order(exchange: ccxt.Exchange,
         params['reduceOnly'] = True
 
     # qty to market amount
-    m = exchange.market(exchange_symbol_name)
-    amount = qty / Decimal(str(m['contractSize'])) / exchange_symbol.multiplier
+    bag_size = get_bag_size(exchange, symbol)
+    amount = qty / bag_size
 
     if align_qty:
         amount = exchange.amount_to_precision(exchange_symbol_name, amount)
@@ -135,20 +136,18 @@ def cancel_order(exchange: ccxt.Exchange, order_id: str, symbol: str = None):
 def align_qty(exchange: ccxt.Exchange, symbol: str, qty: Decimal) -> Tuple[Decimal, Decimal]:
     exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
     exchange_symbol_name = exchange_symbol.name
-    exchange_qty = qty / exchange_symbol.multiplier
     match exchange:
         case ccxt.okex():
-            contract_size = Decimal(
-                str(exchange.market(exchange_symbol_name)['contractSize']))
-            r1 = exchange_qty.quantize(contract_size)
-            r2 = contract_size - r1
-            return r1 * exchange_symbol.multiplier, r2 * exchange_symbol.multiplier
+            bag_size = get_bag_size(exchange, symbol)
+            r1 = qty.quantize(bag_size)
+            r2 = qty - r1
+            return r1, r2
         case ccxt.binanceusdm():
             # market_precesion = exchange.market(
             #     ccxt_symbol)['precision']['amount']
-            r1 = Decimal(str(exchange.amount_to_precision(exchange_symbol_name, exchange_qty)))
-            r2 = exchange_qty - r1
-            return r1 * exchange_symbol.multiplier, r2 * exchange_symbol.multiplier
+            r1 = Decimal(str(exchange.amount_to_precision(exchange_symbol_name, qty / exchange_symbol.multiplier))) * exchange_symbol.multiplier
+            r2 = qty - r1
+            return r1, r2
         case _:
             raise ccxt.ExchangeNotAvailable(
                 f'align qty not support exchange: {exchange.id}')

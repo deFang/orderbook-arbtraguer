@@ -11,7 +11,7 @@ from cross_arbitrage.order.globals import exchanges
 from cross_arbitrage.order.model import OrderSide
 from cross_arbitrage.order.order_book import OrderSignal
 from cross_arbitrage.order.position_status import PositionDirection
-from cross_arbitrage.utils.exchange import create_exchange
+from cross_arbitrage.utils.exchange import create_exchange, get_bag_size
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt, get_exchange_symbol, get_exchange_symbol_from_exchange
 
 
@@ -40,13 +40,14 @@ def normalize_order_qty(exchange: ccxt.Exchange, symbol: str, qty: Union[float, 
     
     exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
     symbol_info = exchange.market(exchange_symbol.name)
+    bag_size = get_bag_size(exchange, symbol)
     match exchange:
-        case ccxt.okex():
-            qty = Decimal(str(qty)) / Decimal(str(symbol_info["contractSize"])) / Decimal(str(exchange_symbol.multiplier))
-            qty_exchange = exchange.amount_to_precision(symbol, qty)
-            return Decimal(str(qty_exchange)) * Decimal(str(symbol_info["contractSize"])) * Decimal(str(exchange_symbol.multiplier))
-        case ccxt.binanceusdm():
-            return Decimal(exchange.amount_to_precision(symbol, Decimal(str(qty)) / Decimal(str(exchange_symbol.multiplier)))) * Decimal(str(exchange_symbol.multiplier))
+        case ccxt.okex() | ccxt.binanceusdm():
+            exchange_amount = Decimal(str(qty)) / bag_size
+            aligned_exchange_amount = exchange.amount_to_precision(symbol, exchange_amount)
+            return Decimal(str(aligned_exchange_amount)) * bag_size
+        # case ccxt.binanceusdm():
+        #     return Decimal(exchange.amount_to_precision(symbol, Decimal(str(qty)) / Decimal(str(exchange_symbol.multiplier)))) * Decimal(str(exchange_symbol.multiplier))
         case _:
             raise Exception(f"unsupported exchanges: {exchange.name}")
 

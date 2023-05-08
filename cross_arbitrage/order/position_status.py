@@ -8,8 +8,8 @@ from cross_arbitrage.config.symbol import SymbolConfig
 from cross_arbitrage.order.config import OrderConfig
 from cross_arbitrage.order.market import market_order
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
-from cross_arbitrage.utils.exchange import get_symbol_min_amount
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt
+from cross_arbitrage.utils.exchange import get_bag_size, get_symbol_min_amount
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt, get_exchange_symbol_from_exchange
 import orjson
 import redis
 
@@ -63,28 +63,31 @@ def refresh_position_status(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange]
 
 def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange: ccxt.Exchange, symbols: list[str]):
     exchange: ccxt.binanceusdm | ccxt.okex
-    ccxt_symbols = list(map(get_ccxt_symbol, symbols))
+
+    exchange_symbol_names = list(map(lambda s: get_exchange_symbol_from_exchange(exchange, s), symbols))
     positions = []
 
     match exchange:
         case ccxt.binanceusdm():
-            positions = exchange.fetch_positions(ccxt_symbols)
+            positions = exchange.fetch_positions(exchange_symbol_names)
             if len(positions) == 0:
                 raise Exception(f'No position found for {symbols}')
         case ccxt.okex():
             okex_positions = []
-            for chunk in [ccxt_symbols[i:i + 10] for i in range(0, len(ccxt_symbols), 10)]:
+            for chunk in [exchange_symbol_names[i:i + 10] for i in range(0, len(exchange_symbol_names), 10)]:
                 okex_positions += exchange.fetch_positions(chunk)
             positions += [pos for pos in okex_positions if pos['info']['mgnMode']== 'cross']
     if not positions:
         return None
     for position in positions:
         symbol = get_common_symbol_from_ccxt(position['symbol'])
-        contract_size = Decimal(str(position['contractSize']))
+        exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
+        bag_size = get_bag_size(exchange, symbol)
+        # contract_size = Decimal(str(position['contractSize']))
         contracts = Decimal(str(position['contracts']))
-        avg_price = Decimal(str(position['entryPrice'])) if position['entryPrice'] else None
-        mark_price = Decimal(str(position['markPrice'])) if position['markPrice'] else None
-        qty = contracts * contract_size
+        avg_price = Decimal(str(position['entryPrice'])) / exchange_symbol.multiplier if position['entryPrice'] else None
+        mark_price = Decimal(str(position['markPrice'])) / exchange_symbol.multiplier if position['markPrice'] else None
+        qty = contracts * bag_size
         direction = PositionDirection.long if position['side'] == 'long' else PositionDirection.short
         position_status = PositionStatus(direction=direction, qty=qty, avg_price=avg_price, mark_price=mark_price)
         update_position_status(rc, exchange_name, symbol, position_status)

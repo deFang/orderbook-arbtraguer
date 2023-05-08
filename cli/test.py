@@ -8,9 +8,6 @@ import click
 from cross_arbitrage.fetch.utils.common import base_name, get_project_root
 from cross_arbitrage.order.config import get_config
 from cross_arbitrage.order.globals import init_globals
-from cross_arbitrage.order.model import normalize_ccxt_order
-from cross_arbitrage.order.signal_dealer import _get_order
-from cross_arbitrage.utils.exchange import get_exchange_name, get_symbol_min_amount
 from cross_arbitrage.utils.logger import init_logger
 from cross_arbitrage.utils.symbol_mapping import init_symbol_mapping_from_file
 

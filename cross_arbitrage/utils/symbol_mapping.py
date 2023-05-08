@@ -38,7 +38,7 @@ def init_symbol_mapping(mapping: Dict[str, Dict[str, str | dict]]):
                 for s in ccxt_symbols:
                     _ccxt2common[s] = common
                 continue
-            
+
             if isinstance(symbol_info, str):
                 mp[exchange] = ExchangeSymbol(name=symbol_info)
             elif isinstance(symbol_info, dict):
