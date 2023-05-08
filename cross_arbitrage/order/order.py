@@ -5,6 +5,9 @@ import threading
 import time
 from typing import Dict, List
 
+from cross_arbitrage.utils.ccxt_patch import patch
+patch()
+
 import ccxt
 from cross_arbitrage.order.globals import get_order_status_stream_is_ready
 from cross_arbitrage.order.order_status import start_order_status_stream_mainloop
