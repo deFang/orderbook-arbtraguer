@@ -9,6 +9,7 @@ from cross_arbitrage.config.log import LogConfig
 from cross_arbitrage.config.network import NetworkConfig
 from cross_arbitrage.config.redis import RedisConfig
 from cross_arbitrage.fetch.utils.common import load_json_file, merge_dict_with_list_item_id
+from cross_arbitrage.utils.symbol_mapping import SymbolMappingNotFoundError
 
 
 class FetchConfig(BaseModel):
@@ -18,7 +19,7 @@ class FetchConfig(BaseModel):
     debug: bool = False
     redis: RedisConfig
     cross_arbitrage_symbol_datas: List[str] = []
-    symbol_name_datas: Dict[str, Dict[str, str]] = {}
+    symbol_name_datas: Dict[str, Dict[str, Union[str, List, Dict]]] = {}
     network: NetworkConfig
     exchanges: Dict[str, AccountConfig]
 
@@ -42,7 +43,20 @@ class FetchConfig(BaseModel):
         # print('>>',exchanges)
         return values
 
+    def get_exchange_symbol_info(self, symbol:str, exchange_name:str) -> Union[str, Dict]:
+        try:
+            return self.symbol_name_datas[symbol][exchange_name]
+        except KeyError:
+            raise SymbolMappingNotFoundError(f"mapping of '{exchange_name}' symbol is not found for '{symbol}'")
 
+    def get_exchange_symbol_name(self, symbol:str, exchange_name:str) -> str:
+        res = self.get_exchange_symbol_info(symbol, exchange_name)
+        if isinstance(res, str):
+            return res
+        elif isinstance(res, dict):
+            return res['name']
+        else:
+            raise Exception(f"unsupport symbol info for {symbol}: {res}")
 
     def print(self):
         logging.info(f"=> name:        {self.name}")

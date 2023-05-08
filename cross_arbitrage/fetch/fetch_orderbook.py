@@ -1,11 +1,13 @@
 # import json
-import orjson as json
+from decimal import Decimal
 import logging
 import queue
 import sys
 import threading
 import time
+import numpy as np
 
+import orjson as json
 import redis
 
 from cross_arbitrage.exchange.binance_usdm_ws import \
@@ -33,7 +35,12 @@ def start_exchange_wsclient(ws, ex_name, config_symbols):
             f"{ex_name} websocket client connected failed in {retries} seconds"
         )
 
-    ws.watch_order_books(symbols=[v[ex_name] for v in config_symbols.values()])
+    ws.watch_order_books(
+        symbols=[
+            v[ex_name]["name"] if isinstance(v[ex_name], dict) else v[ex_name]
+            for v in config_symbols.values()
+        ]
+    )
 
 
 def start_okex_ws_task(
@@ -107,7 +114,10 @@ def start_binance_ws_task(
 
 def process_okex_ws_task(cancel_ctx, config_symbols, task_queue, conf):
     ex_name = "okex"
-    symbol_cache = {v[ex_name]: k for k, v in config_symbols.items()}
+    symbol_cache = {
+        (v[ex_name]["name"] if isinstance(v[ex_name], dict) else v[ex_name]): k
+        for k, v in config_symbols.items()
+    }
     symbol_info_cache = {}
     redis_client = redis.Redis.from_url(
         conf.redis.url, encoding="utf-8", decode_responses=True
@@ -184,9 +194,28 @@ def process_okex_ws_task(cancel_ctx, config_symbols, task_queue, conf):
                 )
 
 
+def normalize_orderbook_5(ob, multiplier):
+    # res = np.array(ob).astype(Decimal)
+    # multiplier = np.array([1/multiplier,1])
+    # return (res * multiplier).astype(str).tolist()
+    for row in ob:
+        row[0] = str(Decimal(str(row[0]))/Decimal(str(multiplier)))
+    return ob
+
+
 def process_binance_ws_task(cancel_ctx, config_symbols, task_queue, conf):
     ex_name = "binance"
-    symbol_cache = {v[ex_name]: k for k, v in config_symbols.items()}
+    symbol_cache = {
+        (v[ex_name]["name"] if isinstance(v[ex_name], dict) else v[ex_name]): k
+        for k, v in config_symbols.items()
+    }
+    symbol_multiplier_cache = {
+        (v[ex_name]["name"] if isinstance(v[ex_name], dict) else v[ex_name]): (
+            v[ex_name]["multiplier"] if isinstance(v[ex_name], dict) else 1.0
+        )
+        for _, v in config_symbols.items()
+    }
+    # print('symbol_multiplier_cache', symbol_multiplier_cache)
     symbol_info_cache = {}
 
     redis_client = redis.Redis.from_url(
@@ -231,8 +260,8 @@ def process_binance_ws_task(cancel_ctx, config_symbols, task_queue, conf):
                                 "ex": ex_name,
                                 "symbol": symbol,
                                 "ts": item["T"],
-                                "bids": item["b"],
-                                "asks": item["a"],
+                                "bids": normalize_orderbook_5(item["b"], symbol_multiplier_cache[item['s']]),
+                                "asks": normalize_orderbook_5(item["a"], symbol_multiplier_cache[item['s']]),
                             }
                             # print(f">> {ex_name} {result}")
                             if (
@@ -248,6 +277,7 @@ def process_binance_ws_task(cancel_ctx, config_symbols, task_queue, conf):
                                 )
                         except Exception as ex:
                             logging.error(ex)
+                            logging.exception(ex)
                 # if item.get("E"):
                 #     logging.info(
                 #         f"{item['s']} ts={item['E']} duration={round(time.time() - float(item['E']/1000),3)}s {item['b']}"
