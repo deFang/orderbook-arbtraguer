@@ -107,10 +107,10 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
     followed_qty = Decimal('0')
 
     taker_exchange_symbol = get_exchange_symbol_from_exchange(taker_exchange, symbol)
-    taker_exchange_minimum_qty = Decimal(
-        str(taker_exchange.market(taker_exchange_symbol.name)['limits']['amount']['min'])) * taker_exchange_symbol.multiplier
     taker_exchange_bag_size = Decimal(
         str(taker_exchange.market(taker_exchange_symbol.name)['contractSize'])) * taker_exchange_symbol.multiplier
+    taker_exchange_minimum_qty = Decimal(
+        str(taker_exchange.market(taker_exchange_symbol.name)['limits']['amount']['min'])) * taker_exchange_bag_size
 
     # set to start exiting tasks
     _clear = False

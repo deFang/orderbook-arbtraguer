@@ -102,6 +102,7 @@ def normalize_okex_order(info) -> Order:
         status=status,
     )
 
+# TODO: for binance implement
 def normalize_common_order(info, ex_name) -> Order:
     _type = OrderType.market
     if info["type"] == "limit":
