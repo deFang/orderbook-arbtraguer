@@ -98,7 +98,7 @@ def normalize_okex_order(info) -> Order:
         ),
         price=str(Decimal(info["px"]) / exchange_symbol.multiplier),
         cost=info["fillNotionalUsd"],
-        average_price=str(Decimal(info["fillPx"]) / exchange_symbol.multiplier) if info["fillPx"] is not None else None,
+        average_price=str(Decimal(info["fillPx"]) / exchange_symbol.multiplier) if not info["fillPx"] else None,
         status=status,
     )
 
