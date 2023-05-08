@@ -64,7 +64,7 @@ def refresh_position_status(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange]
 def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange: ccxt.Exchange, symbols: list[str]):
     exchange: ccxt.binanceusdm | ccxt.okex
 
-    exchange_symbol_names = list(map(lambda s: get_exchange_symbol_from_exchange(exchange, s), symbols))
+    exchange_symbol_names = list(map(lambda s: get_exchange_symbol_from_exchange(exchange, s).name, symbols))
     positions = []
 
     match exchange:

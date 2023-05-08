@@ -44,7 +44,7 @@ def normalize_order_qty(exchange: ccxt.Exchange, symbol: str, qty: Union[float, 
     match exchange:
         case ccxt.okex() | ccxt.binanceusdm():
             exchange_amount = Decimal(str(qty)) / bag_size
-            aligned_exchange_amount = exchange.amount_to_precision(symbol, exchange_amount)
+            aligned_exchange_amount = exchange.amount_to_precision(exchange_symbol.name, exchange_amount)
             return Decimal(str(aligned_exchange_amount)) * bag_size
         # case ccxt.binanceusdm():
         #     return Decimal(exchange.amount_to_precision(symbol, Decimal(str(qty)) / Decimal(str(exchange_symbol.multiplier)))) * Decimal(str(exchange_symbol.multiplier))
