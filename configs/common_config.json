@@ -461,7 +461,7 @@
       "okex": "PEPE-USDT-SWAP",
       "binance": {
         "name": "1000PEPEUSDT",
-        "multiplier": "1000"
+        "multiplier": 1000
       },
       "ccxt": ["PEPE/USDT:USDT", "1000PEPE/USDT:USDT"]
     }

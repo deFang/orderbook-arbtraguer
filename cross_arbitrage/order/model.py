@@ -113,7 +113,7 @@ def normalize_common_order(info, ex_name) -> Order:
         side = OrderSide.sell
 
     symbol = get_common_symbol_from_ccxt(info["symbol"])
-    exchange_symbol = get_exchange_symbol(ex_name, symbol)
+    exchange_symbol = get_exchange_symbol(symbol, ex_name)
     exchange_symbol_name = exchange_symbol.name
     symbol_info = exchanges[ex_name].market(exchange_symbol_name)
 
