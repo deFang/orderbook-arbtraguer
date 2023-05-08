@@ -6,7 +6,7 @@ import pydantic
 
 
 class ExchangeSymbol(pydantic.BaseModel):
-    name: str
+    name: str | list[str]
     multiplier: int = 1
 
 
@@ -27,7 +27,7 @@ def init_symbol_mapping_from_file(file_path: str):
 
 def init_symbol_mapping(mapping: Dict[str, Dict[str, str | dict]]):
     global symbol_mapping
-    
+
     for common, m in mapping.items():
         mp = {}
         for exchange, symbol_info in m.items():
@@ -36,16 +36,24 @@ def init_symbol_mapping(mapping: Dict[str, Dict[str, str | dict]]):
             elif isinstance(symbol_info, dict):
                 mp[exchange] = ExchangeSymbol(**symbol_info)
             else:
-                raise ValueError("invalid symbol mapping type: {}({})".format(type(symbol_info), symbol_info))
-        symbol_mapping[common] = mp
+                raise ValueError("invalid symbol mapping type: {}({})".format(
+                    type(symbol_info), symbol_info))
 
-    for common, mapping in mapping.items():
         ccxt_symbol = mp.get("ccxt", None)
         if ccxt_symbol:
-            _ccxt2common[ccxt_symbol.name] = common
+            if isinstance(ccxt_symbol.name, str):
+                ccxt_symbol_names = [ccxt_symbol.name]
+            else:
+                ccxt_symbol_names = ccxt_symbol.name
+
+            for s in ccxt_symbol_names:
+                _ccxt2common[s] = common
+
+        symbol_mapping[common] = mp
 
 
 def get_ccxt_symbol(common_symbol: str) -> str:
+    raise NotImplementedError()
     try:
         return symbol_mapping[common_symbol]["ccxt"].name
     except KeyError:
@@ -61,7 +69,7 @@ def get_exchange_symbol(common_symbol: str, exchange_name: str) -> ExchangeSymbo
         raise SymbolMappingNotFoundError(
             f"mapping of '{exchange_name}' symbol not found for '{common_symbol}'"
         )
-    
+
 
 def get_exchange_symbol_from_exchange(exchange: ccxt.Exchange, symbol: str) -> ExchangeSymbol:
     match exchange:
@@ -70,7 +78,8 @@ def get_exchange_symbol_from_exchange(exchange: ccxt.Exchange, symbol: str) -> E
         case ccxt.binanceusdm():
             return get_exchange_symbol(symbol, "binance")
         case _:
-            raise Exception(f"get_exchange_symbol_from_exchange: unsupport ccxt exchange {exchange.name}")
+            raise Exception(
+                f"get_exchange_symbol_from_exchange: unsupport ccxt exchange {exchange.name}")
 
 
 def get_common_symbol_from_ccxt(ccxt_symbol: str) -> str:

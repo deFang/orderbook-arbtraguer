@@ -463,7 +463,7 @@
         "name": "1000PEPEUSDT",
         "multiplier": "1000"
       },
-      "ccxt": "PEPE/USDT:USDT"
+      "ccxt": ["PEPE/USDT:USDT", "1000PEPE/USDT:USDT"]
     }
   },
   "network": {
