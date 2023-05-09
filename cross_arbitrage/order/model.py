@@ -80,6 +80,12 @@ def normalize_okex_order(info) -> Order:
     elif info["state"] == "filled":
         status = OrderStatus.filled
 
+    avg_price = str(Decimal(info["fillPx"]) / exchange_symbol.multiplier) if info["fillPx"] else None
+
+    filled_amount =str(
+        Decimal(info["accFillSz"]) * Decimal(str(symbol_info["contractSize"])) * exchange_symbol.multiplier
+    )
+
     return Order(
         id=info["ordId"],
         order_client_id=info["clOrdId"],
@@ -93,12 +99,10 @@ def normalize_okex_order(info) -> Order:
         amount=str(
             Decimal(info["sz"]) * Decimal(str(symbol_info["contractSize"])) * exchange_symbol.multiplier
         ),
-        filled=str(
-            Decimal(info["accFillSz"]) * Decimal(str(symbol_info["contractSize"])) * exchange_symbol.multiplier
-        ),
+        filled=filled_amount,
         price=str(Decimal(info["px"]) / exchange_symbol.multiplier) if info["px"] else "",
-        cost=info["fillNotionalUsd"],
-        average_price=str(Decimal(info["fillPx"]) / exchange_symbol.multiplier) if info["fillPx"] else None,
+        cost=str(Decimal(avg_price) * Decimal(filled_amount)) if avg_price else "",
+        average_price=avg_price,
         status=status,
     )
 
