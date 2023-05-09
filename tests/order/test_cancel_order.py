@@ -66,7 +66,7 @@ def test_should_cancel_makeonly_order(config):
             signal,
             taker_ob,
             need_depth_qty=Decimal(100),
-            contract_size=Decimal(1),
+            bag_size=Decimal(1),
         )
         == True
     )
@@ -91,7 +91,7 @@ def test_should_cancel_makeonly_order(config):
             signal,
             taker_ob,
             need_depth_qty=Decimal(100),
-            contract_size=Decimal(1),
+            bag_size=Decimal(1),
         )
         == False
     )
@@ -122,7 +122,7 @@ def test_should_cancel_makeonly_order(config):
             signal,
             taker_ob,
             need_depth_qty=Decimal(str(7.2)),
-            contract_size=Decimal(1),
+            bag_size=Decimal(1),
         )
         == False
     )
@@ -133,7 +133,7 @@ def test_should_cancel_makeonly_order(config):
             signal,
             taker_ob,
             need_depth_qty=Decimal(str(7.3)),
-            contract_size=Decimal(1),
+            bag_size=Decimal(1),
         )
         == True
     )

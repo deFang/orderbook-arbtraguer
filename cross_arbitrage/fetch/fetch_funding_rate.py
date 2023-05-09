@@ -11,7 +11,7 @@ from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from cross_arbitrage.utils.exchange import create_exchange
 from cross_arbitrage.utils.order import get_last_funding_rate
 from cross_arbitrage.utils.symbol_mapping import (get_ccxt_symbol,
-                                                  get_common_symbol_from_ccxt)
+                                                  get_common_symbol_from_ccxt, get_exchange_symbol)
 
 
 def get_funding_rate_key(ex_name: str, symbol: str):
@@ -30,10 +30,10 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
         exchanges[ex_name] = create_exchange(config.exchanges[ex_name])
 
     # ccxt symbols
-    ccxt_symbols = [
-        get_ccxt_symbol(symbol)
-        for symbol in config.cross_arbitrage_symbol_datas
-    ]
+    # ccxt_symbols = [
+    #     get_ccxt_symbol(symbol)
+    #     for symbol in config.cross_arbitrage_symbol_datas
+    # ]
 
     while True:
         start_at = now_s()
@@ -42,15 +42,16 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
             break
 
         for ex_name in exchanges.keys():
-            for symbol in ccxt_symbols:
+            for symbol in config.cross_arbitrage_symbol_datas:
                 try:
                     res = {
                         "exchange": ex_name,
-                        "symbol": get_common_symbol_from_ccxt(symbol),
+                        "symbol": symbol,
                         "delta": None,
                     }
+                    exchange_symbol = get_exchange_symbol(symbol, ex_name)
                     funding_info = exchanges[ex_name].fetch_funding_rate(
-                        symbol=symbol
+                        symbol=exchange_symbol.name
                     )
                     res["funding_rate"] = str(
                         Decimal(str(funding_info["fundingRate"]))
@@ -59,7 +60,7 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
 
                     previous_funding_info_raw = rc.get(
                         get_funding_rate_key(
-                            ex_name, get_common_symbol_from_ccxt(symbol)
+                            ex_name, symbol
                         )
                     )
                     previous_funding_info = None
@@ -99,7 +100,7 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                     )
                     rc.set(
                         get_funding_rate_key(
-                            ex_name, get_common_symbol_from_ccxt(symbol)
+                            ex_name, symbol
                         ),
                         json.dumps(res),
                     )

@@ -5,6 +5,9 @@ import threading
 import time
 from typing import Dict, List
 
+from cross_arbitrage.utils.ccxt_patch import patch
+patch()
+
 import ccxt
 from cross_arbitrage.order.globals import get_order_status_stream_is_ready
 from cross_arbitrage.order.order_status import start_order_status_stream_mainloop
@@ -15,7 +18,7 @@ from cross_arbitrage.order.process_threshold import process_threshold_mainloop
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.utils.exchange import create_exchange
 from cross_arbitrage.utils.order import get_order_qty, order_mode_is_maintain, order_mode_is_pending, order_mode_is_reduce_only
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_exchange_symbol_from_exchange
 from .config import OrderConfig
 from .order_book import fetch_orderbooks_from_redis, get_signal_from_orderbooks
 from .signal_dealer import deal_loop
@@ -181,18 +184,18 @@ def clear_orders(ctx: CancelContext, symbols: List[str], exchanges: Dict[str, cc
     for exchange_name, exchange in exchanges.items():
         logging.info(f"==> cancel orders on {exchange_name}")
         for symbol in symbols:
-            ccxt_symbol = get_ccxt_symbol(symbol)
+            exchange_symbol_name = get_exchange_symbol_from_exchange(exchange, symbol).name
             try:
                 match exchange:
                     case ccxt.okex():
-                        orders = exchange.fetch_open_orders(symbol=ccxt_symbol)
+                        orders = exchange.fetch_open_orders(symbol=exchange_symbol_name)
                         if orders:
                             # TODO: fix cancel orders
                             exchange.cancel_orders(orders)
                             logging.info(
                                 f"===> canceled orders on {exchange_name} for {symbol}")
                     case _:
-                        exchange.cancel_all_orders(symbol=ccxt_symbol)
+                        exchange.cancel_all_orders(symbol=exchange_symbol_name)
                         logging.info(
                             f"===> canceled orders on {exchange_name} for {symbol}")
             except Exception as e:
@@ -204,15 +207,15 @@ def set_leverage(ctx: CancelContext, exchanges: Dict[str, ccxt.Exchange], symbol
         exchange: ccxt.binanceusdm | ccxt.okex
         try:
             for symbol in symbols:
-                ccxt_symbol = get_ccxt_symbol(symbol)
-                exchange.set_margin_mode(marginMode='cross', symbol=ccxt_symbol)
+                exchange_symbol_name = get_exchange_symbol_from_exchange(exchange, symbol).name
+                exchange.set_margin_mode(marginMode='cross', symbol=exchange_symbol_name)
         except Exception as e:
             logging.error(f"set margin mode on {exchange_name} failed: {e}")
 
         try:
             for symbol in symbols:
-                ccxt_symbol = get_ccxt_symbol(symbol)
-                exchange.set_leverage(leverage=leverage, symbol=ccxt_symbol)
+                exchange_symbol_name = get_exchange_symbol_from_exchange(exchange, symbol).name
+                exchange.set_leverage(leverage=leverage, symbol=exchange_symbol_name)
                 logging.info(
                     f"===> set leverage on {exchange_name} for {symbol} to {leverage}")
         except Exception as e:

@@ -11,7 +11,7 @@ from cross_arbitrage.order.config import OrderConfig
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.order.position_status import PositionDirection, get_position_status, PositionStatus
 from cross_arbitrage.utils.cache import expire_cache, ExpireCache
-from cross_arbitrage.utils.exchange import get_symbol_min_amount
+from cross_arbitrage.utils.exchange import get_bag_size_by_ex_name, get_symbol_min_amount
 from .threshold import Threshold
 
 
@@ -117,7 +117,8 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
 
             # if maker exchange price if higher
             if float(maker_ob['asks'][0][0]) > float(taker_ob['asks'][0][0]) * float(1 + high_delta):
-                qty = Decimal(taker_ob['asks'][0][1])
+                bag_size = get_bag_size_by_ex_name(taker_exchange, symbol)
+                qty = Decimal(taker_ob['asks'][0][1]) * bag_size
                 if position_qty is not None:
                     qty = min(qty, position_qty)
                     if maker_symbol_position and maker_symbol_position.direction == PositionDirection.long:
@@ -138,7 +139,8 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                 )
             # else if maker exchange price if lower
             elif float(maker_ob['bids'][0][0]) < float(taker_ob['bids'][0][0]) * float(1 + low_delta):
-                qty = Decimal(taker_ob['bids'][0][1])
+                bag_size = get_bag_size_by_ex_name(taker_exchange, symbol)
+                qty = Decimal(taker_ob['bids'][0][1]) * bag_size
                 if position_qty is not None:
                     qty = min(qty, position_qty)
                     if maker_symbol_position and maker_symbol_position.direction == PositionDirection.short:

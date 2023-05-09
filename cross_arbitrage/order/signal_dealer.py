@@ -16,12 +16,12 @@ import redis
 import numpy as np
 
 from cross_arbitrage.fetch.utils.common import now_ms
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_exchange_symbol_from_exchange
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from .config import OrderConfig
 from .order_book import OrderSignal
-from .market import align_qty, maker_only_order, market_order, cancel_order, get_contract_size
-from .model import Order as OrderModel, OrderStatus, normalize_ccxt_order
+from .market import align_qty, maker_only_order, market_order, cancel_order
+from .model import Order as OrderModel, OrderStatus, normalize_common_order
 
 
 class _Status(BaseModel):
@@ -47,7 +47,6 @@ class OrderDataModel(CSVModel):
 def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exchanges: Dict[str, ccxt.Exchange], rc: redis.Redis):
 
     symbol = signal.symbol
-    ccxt_symbol = get_ccxt_symbol(symbol)
     maker_exchange: ccxt.okex = exchanges[signal.maker_exchange]
     taker_exchange: ccxt.binance = exchanges[signal.taker_exchange]
 
@@ -107,10 +106,11 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
     maker_filled_qty = Decimal('0')
     followed_qty = Decimal('0')
 
+    taker_exchange_symbol = get_exchange_symbol_from_exchange(taker_exchange, symbol)
+    taker_exchange_bag_size = Decimal(
+        str(taker_exchange.market(taker_exchange_symbol.name)['contractSize'])) * taker_exchange_symbol.multiplier
     taker_exchange_minimum_qty = Decimal(
-        str(taker_exchange.market(ccxt_symbol)['limits']['amount']['min']))
-    taker_exchange_contract_size = Decimal(
-        str(taker_exchange.market(ccxt_symbol)['contractSize']))
+        str(taker_exchange.market(taker_exchange_symbol.name)['limits']['amount']['min'])) * taker_exchange_bag_size
 
     # set to start exiting tasks
     _clear = False
@@ -184,7 +184,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                                          signal.taker_side, need_order_qty,
                                          client_id=taker_client_id)
                     followed_qty += Decimal(str(order['amount'])) * \
-                        taker_exchange_contract_size
+                        taker_exchange_bag_size
                     new_trade = False
                 except Exception as e:
                     logging.error(f'place taker order failed: {type(e)}')
@@ -277,7 +277,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             continue
         ob = orjson.loads(ob_raw)
 
-        if should_cancel_makeonly_order(ctx, config, signal, ob, order_qty, taker_exchange_contract_size):
+        if should_cancel_makeonly_order(ctx, config, signal, ob, order_qty, taker_exchange_bag_size):
             logging.info(
                 f'cancel makeonly order: {maker_order_id}({maker_client_id})')
             ok = cancel_order_once(maker_exchange, symbol, maker_order_id)
@@ -321,10 +321,10 @@ def _cancel_order(exchange: ccxt.Exchange, symbol: str, order_id: str):
 @retry(3, raise_exception=False)
 def _get_order(exchange: ccxt.Exchange, symbol: str, order_id: str) -> OrderModel:
     if symbol:
-        symbol = get_ccxt_symbol(symbol)
+        symbol = get_exchange_symbol_from_exchange(exchange, symbol).name
     ccxt_order = exchange.fetch_order(id=order_id, symbol=symbol)
 
-    res = normalize_ccxt_order(ccxt_order, get_exchange_name(exchange))
+    res = normalize_common_order(ccxt_order, get_exchange_name(exchange))
     return res
 
 
@@ -344,8 +344,8 @@ def cancel_order_once(exchange: ccxt.Exchange, symbol: str, order_id: str):
 
 
 def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal: OrderSignal,
-                                 taker_ob: dict, need_depth_qty: Decimal, contract_size: Decimal):
-    contract_size = np.float64(contract_size)
+                                 taker_ob: dict, need_depth_qty: Decimal, bag_size: Decimal):
+    bag_size = np.float64(bag_size)
 
     threshold_line = signal.maker_price / \
         Decimal(str(1 + signal.cancel_order_threshold))
@@ -362,7 +362,7 @@ def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal
             if ob[-1, 0] < threshold_line:
                 return False
 
-            ob[:, 1] *= contract_size
+            ob[:, 1] *= bag_size
             if ob[ob[:, 0] <= threshold_line, 1].sum() < need_depth_qty:
                 if config.debug:
                     logging.info(
@@ -380,7 +380,7 @@ def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal
             if ob[-1, 0] > threshold_line:
                 return False
 
-            ob[:, 1] *= contract_size
+            ob[:, 1] *= bag_size
             if ob[ob[:, 0] >= threshold_line, 1].sum() < need_depth_qty:
                 if config.debug:
                     logging.info(

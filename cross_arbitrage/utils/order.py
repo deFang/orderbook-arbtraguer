@@ -11,39 +11,48 @@ from cross_arbitrage.order.globals import exchanges
 from cross_arbitrage.order.model import OrderSide
 from cross_arbitrage.order.order_book import OrderSignal
 from cross_arbitrage.order.position_status import PositionDirection
-from cross_arbitrage.utils.exchange import create_exchange
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt
+from cross_arbitrage.utils.exchange import create_exchange, get_bag_size
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt, get_exchange_symbol, get_exchange_symbol_from_exchange
+
 
 def order_mode_is_pending(ctx):
     return ctx.get('order_mode') == 'pending'
 
+
 def order_mode_is_reduce_only(ctx):
     return ctx.get('order_mode') == 'reduce_only'
+
 
 def order_mode_is_normal(ctx):
     return ctx.get('order_mode') == 'normal'
 
+
 def order_mode_is_maintain(ctx):
     return ctx.get('order_mode') == 'maintain'
+
 
 def get_order_status_key(order_id: str, ex_name: str):
     return f"order_status:{ex_name}:{order_id}"
 
 
-def normalize_order_qty(exchange: ccxt.Exchange, symbol:str, qty:Union[float,str,Decimal]):
+def normalize_order_qty(exchange: ccxt.Exchange, symbol: str, qty: Union[float, str, Decimal]):
     exchange.load_markets()
-    symbol_info = exchange.market(symbol)
+    
+    exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
+    symbol_info = exchange.market(exchange_symbol.name)
+    bag_size = get_bag_size(exchange, symbol)
     match exchange:
-        case ccxt.okex():
-            qty = Decimal(str(qty)) / Decimal(str(symbol_info["contractSize"]))
-            qty = exchange.amount_to_precision(symbol, qty)
-            return Decimal(str(qty)) * Decimal(str(symbol_info["contractSize"]))
-        case ccxt.binanceusdm():
-            return Decimal(exchange.amount_to_precision(symbol, qty))
+        case ccxt.okex() | ccxt.binanceusdm():
+            exchange_amount = Decimal(str(qty)) / bag_size
+            aligned_exchange_amount = exchange.amount_to_precision(exchange_symbol.name, exchange_amount)
+            return Decimal(str(aligned_exchange_amount)) * bag_size
+        # case ccxt.binanceusdm():
+        #     return Decimal(exchange.amount_to_precision(symbol, Decimal(str(qty)) / Decimal(str(exchange_symbol.multiplier)))) * Decimal(str(exchange_symbol.multiplier))
         case _:
             raise Exception(f"unsupported exchanges: {exchange.name}")
 
-def normalize_exchanges_order_qty(exchanges: List[ccxt.Exchange], symbol:str, qty:Union[float,str,Decimal]):
+
+def normalize_exchanges_order_qty(exchanges: List[ccxt.Exchange], symbol: str, qty: Union[float, str, Decimal]):
     qtys = [normalize_order_qty(ex, symbol, qty) for ex in exchanges]
     return min(qtys)
 
@@ -85,7 +94,8 @@ def get_order_qty(signal: OrderSignal, rc: redis.Redis, config: OrderConfig):
             )
             return Decimal(0)
         else:
-            symbol_config = config.get_symbol_data_by_makeonly(signal.symbol, signal.maker_exchange)
+            symbol_config = config.get_symbol_data_by_makeonly(
+                signal.symbol, signal.maker_exchange)
             max_notional_per_order = Decimal(
                 str(symbol_config.max_notional_per_order)
             )
@@ -93,10 +103,11 @@ def get_order_qty(signal: OrderSignal, rc: redis.Redis, config: OrderConfig):
                 res = max_notional_per_order / signal.maker_price
             else:
                 res = signal.maker_qty
-        ccxt_symbol = get_ccxt_symbol(signal.symbol)
+        symbol = signal.symbol
         order_qty = normalize_exchanges_order_qty(
-            exchanges=[exchanges[signal.maker_exchange],exchanges[signal.taker_exchange]],
-            symbol=ccxt_symbol,
+            exchanges=[exchanges[signal.maker_exchange],
+                       exchanges[signal.taker_exchange]],
+            symbol=symbol,
             qty=res,
         )
         if config.debug:
@@ -112,21 +123,23 @@ def get_order_qty(signal: OrderSignal, rc: redis.Redis, config: OrderConfig):
         logging.exception(ex)
         raise ex
 
-def get_last_funding_rate(exchange_name: str, ccxt_symbol: str, config: OrderConfig):
+
+def get_last_funding_rate(exchange_name: str, symbol: str, config: OrderConfig):
     now = now_ms()
-    since = now - now % (8* 60 * 60 * 1000)
+    since = now - now % (8 * 60 * 60 * 1000)
 
     exchange = create_exchange(config.exchanges[exchange_name])
 
-    res = exchange.fetch_funding_rate_history(ccxt_symbol, since = since)
+    exchange_symbol_name = get_exchange_symbol(symbol, exchange_name).name
+
+    res = exchange.fetch_funding_rate_history(exchange_symbol_name, since=since)
     if res and len(res) > 0:
         return {
-                "exchange": exchange_name,
-                "symbol": get_common_symbol_from_ccxt(res[0]['symbol']),
-                "funding_rate": str(Decimal(str(res[0]['fundingRate']))),
-                "funding_timestamp": res[0]['timestamp'],
-                "delta": None,
-                }
+            "exchange": exchange_name,
+            "symbol": get_common_symbol_from_ccxt(res[0]['symbol']),
+            "funding_rate": str(Decimal(str(res[0]['fundingRate']))),
+            "funding_timestamp": res[0]['timestamp'],
+            "delta": None,
+        }
     else:
         return None
-
