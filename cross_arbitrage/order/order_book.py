@@ -11,7 +11,8 @@ from cross_arbitrage.order.config import OrderConfig
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.order.position_status import PositionDirection, get_position_status, PositionStatus
 from cross_arbitrage.utils.cache import expire_cache, ExpireCache
-from cross_arbitrage.utils.exchange import get_symbol_min_amount
+from cross_arbitrage.utils.exchange import get_bag_size_by_ex_name, get_symbol_min_amount
+from .threshold import Threshold
 
 
 class OrderSignal(NamedTuple):
@@ -66,7 +67,8 @@ def fetch_orderbooks_from_redis(ctx: CancelContext,
     return ret
 
 
-def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], config: OrderConfig, orderbooks: list) -> Dict[str, OrderSignal]:
+def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], 
+                               config: OrderConfig, thresholds: dict[str, Threshold], orderbooks: list) -> Dict[str, OrderSignal]:
     """
     return: {symbol: `OrderSignal`}
     """
@@ -87,17 +89,19 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
             maker_exchange = symbol_config.makeonly_exchange_name
             taker_exchange = (set(config.exchange_pair_names) - {maker_exchange}).pop()
 
+            threshold = thresholds[maker_exchange].get_symbol_thresholds(symbol)
+
             maker_ob = ob[maker_exchange]
             taker_ob = ob[taker_exchange]
 
             # TODO: check position
             maker_symbol_position = get_position(rc, maker_exchange, symbol)
             symbol_minimum_qty = get_symbol_min_amount(exchanges, symbol)
-            high_delta = symbol_config.short_threshold_data.increase_position_threshold
-            high_cancel_threshold = symbol_config.short_threshold_data.cancel_increase_position_threshold
+            high_delta = threshold.short_threshold.increase_position_threshold
+            high_cancel_threshold = threshold.short_threshold.cancel_increase_position_threshold
 
-            low_delta = symbol_config.long_threshold_data.increase_position_threshold
-            low_cancel_threshold = symbol_config.long_threshold_data.cancel_increase_position_threshold
+            low_delta = threshold.long_threshold.increase_position_threshold
+            low_cancel_threshold = threshold.long_threshold.cancel_increase_position_threshold
 
             position_qty = None
             is_reduce_position = False
@@ -105,15 +109,16 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
             if maker_symbol_position and maker_symbol_position.qty > symbol_minimum_qty:
                 position_qty = maker_symbol_position.qty
                 if maker_symbol_position.direction == PositionDirection.long:
-                    high_delta = symbol_config.long_threshold_data.decrease_position_threshold
-                    high_cancel_threshold = symbol_config.long_threshold_data.cancel_decrease_position_threshold
+                    high_delta = threshold.long_threshold.decrease_position_threshold
+                    high_cancel_threshold = threshold.long_threshold.cancel_decrease_position_threshold
                 elif maker_symbol_position.direction == PositionDirection.short:
-                    low_delta = symbol_config.short_threshold_data.decrease_position_threshold
-                    low_cancel_threshold = symbol_config.short_threshold_data.cancel_decrease_position_threshold
+                    low_delta = threshold.short_threshold.decrease_position_threshold
+                    low_cancel_threshold = threshold.short_threshold.cancel_decrease_position_threshold
 
             # if maker exchange price if higher
-            if float(maker_ob['asks'][0][0]) > float(taker_ob['asks'][0][0]) * (1 + high_delta):
-                qty = Decimal(taker_ob['asks'][0][1])
+            if float(maker_ob['asks'][0][0]) > float(taker_ob['asks'][0][0]) * float(1 + high_delta):
+                bag_size = get_bag_size_by_ex_name(taker_exchange, symbol)
+                qty = Decimal(taker_ob['asks'][0][1]) * bag_size
                 if position_qty is not None:
                     qty = min(qty, position_qty)
                     if maker_symbol_position and maker_symbol_position.direction == PositionDirection.long:
@@ -128,13 +133,14 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     taker_exchange=taker_exchange,
                     taker_price=Decimal(taker_ob['asks'][0][0]),
                     orderbook_ts=maker_ob['ts'],
-                    cancel_order_threshold=high_cancel_threshold,
+                    cancel_order_threshold=float(high_cancel_threshold),
                     maker_position=maker_symbol_position,
                     is_reduce_position = is_reduce_position,
                 )
             # else if maker exchange price if lower
-            elif float(maker_ob['bids'][0][0]) < float(taker_ob['bids'][0][0]) * (1 + low_delta):
-                qty = Decimal(taker_ob['bids'][0][1])
+            elif float(maker_ob['bids'][0][0]) < float(taker_ob['bids'][0][0]) * float(1 + low_delta):
+                bag_size = get_bag_size_by_ex_name(taker_exchange, symbol)
+                qty = Decimal(taker_ob['bids'][0][1]) * bag_size
                 if position_qty is not None:
                     qty = min(qty, position_qty)
                     if maker_symbol_position and maker_symbol_position.direction == PositionDirection.short:
@@ -149,7 +155,7 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     taker_exchange=taker_exchange,
                     taker_price=Decimal(taker_ob['bids'][0][0]),
                     orderbook_ts=maker_ob['ts'],
-                    cancel_order_threshold=low_cancel_threshold,
+                    cancel_order_threshold=float(low_cancel_threshold),
                     maker_position=maker_symbol_position,
                     is_reduce_position = is_reduce_position,
                 )

@@ -16,9 +16,12 @@ from cross_arbitrage.fetch.utils.common import (base_name, get_project_root,
 from cross_arbitrage.order.config import get_config
 from cross_arbitrage.order.globals import init_globals
 from cross_arbitrage.utils.decorator import paged_since, retry
+from cross_arbitrage.utils.exchange import get_bag_size
 from cross_arbitrage.utils.logger import init_logger
 from cross_arbitrage.utils.symbol_mapping import (
-    get_ccxt_symbol, init_symbol_mapping_from_file)
+    get_ccxt_symbol, get_common_symbol_from_exchange_symbol,
+    get_exchange_symbol, get_exchange_symbol_from_exchange,
+    init_symbol_mapping_from_file)
 
 # constants
 DATA_DIR = "data"
@@ -89,6 +92,7 @@ def fetch_closed_orders_since(exchange, symbol, since, limit=1000):
 
 def sync_symbols_orders(exchange, symbols, since, until, dir="data"):
     orders_raw = []
+
     if exchange.ex_name == "okex":
         last_timestamp = since
         cache = {}
@@ -127,8 +131,12 @@ def sync_symbols_orders(exchange, symbols, since, until, dir="data"):
         # )
 
     else:
+        exchange_symbol_names = [
+            get_exchange_symbol_from_exchange(exchange, s).name
+            for s in symbols
+        ]
         orders_raw = []
-        for symbol in symbols:
+        for symbol in exchange_symbol_names:
             orders = fetch_closed_orders_since(
                 exchange, symbol=symbol, since=since, limit=1000
             )
@@ -142,7 +150,7 @@ def sync_symbols_orders(exchange, symbols, since, until, dir="data"):
         f.write(json.dumps(orders_raw))
 
 
-def gen_order_csv(exchange):
+def gen_order_csv(exchange, env):
     json_name = f"{DATA_DIR}/{exchange.ex_name}_raw.json"
     with open(json_name, "r") as f:
         orders_raw = json.load(f)
@@ -158,11 +166,15 @@ def gen_order_csv(exchange):
                 )
                 symbol_info = exchange.market(ccxt_symbol)
                 # print(f"{symbol} {symbol_info['contractSize']}")
+                common_symbol = get_common_symbol_from_exchange_symbol(
+                    o["instId"], exchange.ex_name
+                )
+                bag_size = get_bag_size(exchange, common_symbol)
                 res.append(
                     {
                         "id": o["ordId"],
                         "clientOrderId": o["clOrdId"],
-                        "symbol": o["instId"],
+                        "symbol": common_symbol,
                         "timestamp": int(o["cTime"]),
                         "updateTimestamp": int(o["uTime"]),
                         "datetime": datetime.fromtimestamp(
@@ -174,18 +186,14 @@ def gen_order_csv(exchange):
                         "side": o["side"].upper(),
                         "price": o["px"],
                         "avgPrice": o["avgPx"],
-                        "origQty": str(
-                            Decimal(str(o["sz"]))
-                            * Decimal(str(symbol_info["contractSize"]))
-                        ),
+                        "origQty": str(Decimal(str(o["sz"])) * bag_size),
                         "executedQty": str(
-                            Decimal(str(o["accFillSz"]))
-                            * Decimal(str(symbol_info["contractSize"]))
+                            Decimal(str(o["accFillSz"])) * bag_size
                         ),
                         "cost": str(
                             Decimal(o["accFillSz"])
                             * Decimal(o["fillPx"])
-                            * Decimal(str(symbol_info["contractSize"]))
+                            * bag_size
                         ),
                         "status": o["state"],
                         "reduceOnly": o["reduceOnly"],
@@ -195,7 +203,7 @@ def gen_order_csv(exchange):
                 )
 
             save_dictlist_to_csv(
-                f"{DATA_DIR}/{exchange.ex_name}_orders_{date_now_str()}.csv",
+                f"{DATA_DIR}/{env}_{exchange.ex_name}_orders_{date_now_str()}.csv",
                 headers=[
                     "id",
                     "clientOrderId",
@@ -216,35 +224,52 @@ def gen_order_csv(exchange):
                 file_mode="w",
             )
         else:
-            res = [
-                {
-                    "id": o["info"]["orderId"],
-                    "clientOrderId": o["info"]["clientOrderId"],
-                    "symbol": o["info"]["symbol"],
-                    "status": o["info"]["status"],
-                    "timestamp": int(o["info"]["time"]),
-                    "updateTimestamp": int(o["info"]["updateTime"]),
-                    "datetime": datetime.fromtimestamp(
-                        int(o["info"]["time"]) / 1000
-                    )
-                    .astimezone(timezone.utc)
-                    .strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                    "type": o["info"]["type"],
-                    "side": o["info"]["side"],
-                    "price": o["info"]["price"],
-                    "avgPrice": o["info"]["avgPrice"],
-                    "origQty": o["info"]["origQty"],
-                    "executedQty": o["info"]["executedQty"],
-                    "cost": o["info"]["cumQuote"],
-                    "timeInForce": o["info"]["timeInForce"],
-                    "reduceOnly": o["info"]["reduceOnly"],
-                    "closePosition": o["info"]["closePosition"],
-                }
-                for o in orders_raw
-            ]
+            res = []
+            for o in orders_raw:
+                common_symbol = get_common_symbol_from_exchange_symbol(
+                    o["info"]["symbol"], exchange.ex_name
+                )
+                bag_size = get_bag_size(exchange, common_symbol)
+                res.append(
+                    {
+                        "id": o["info"]["orderId"],
+                        "clientOrderId": o["info"]["clientOrderId"],
+                        "symbol": common_symbol,
+                        "status": o["info"]["status"],
+                        "timestamp": int(o["info"]["time"]),
+                        "updateTimestamp": int(o["info"]["updateTime"]),
+                        "datetime": datetime.fromtimestamp(
+                            int(o["info"]["time"]) / 1000
+                        )
+                        .astimezone(timezone.utc)
+                        .strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                        "type": o["info"]["type"],
+                        "side": o["info"]["side"],
+                        "price": str(
+                            Decimal(str(o["info"]["price"])) / bag_size
+                        ),
+                        "avgPrice": str(
+                            Decimal(str(o["info"]["avgPrice"])) / bag_size
+                        )
+                        if o["info"]["avgPrice"]
+                        else "",
+                        "origQty": str(
+                            Decimal(str(o["info"]["origQty"])) * bag_size
+                        ),
+                        "executedQty": str(
+                            Decimal(str(o["info"]["executedQty"])) * bag_size
+                        )
+                        if o["info"]["executedQty"]
+                        else "",
+                        "cost": o["info"]["cumQuote"],
+                        "timeInForce": o["info"]["timeInForce"],
+                        "reduceOnly": o["info"]["reduceOnly"],
+                        "closePosition": o["info"]["closePosition"],
+                    }
+                )
 
             save_dictlist_to_csv(
-                f"{DATA_DIR}/{exchange.ex_name}_orders_{date_now_str()}.csv",
+                f"{DATA_DIR}/{env}_{exchange.ex_name}_orders_{date_now_str()}.csv",
                 headers=[
                     "id",
                     "clientOrderId",
@@ -267,12 +292,34 @@ def gen_order_csv(exchange):
             )
 
 
-def analysis_orders():
+def analysis_orders(env):
+    # dev
+    fee_rate = {
+        "binance": {
+            "maker": 0.0002,
+            "taker": 0.0004,
+        },
+        "okex": {
+            "maker": 0.0002,
+            "taker": 0.0005,
+        },
+    }
+    if env == "aalh11":
+        fee_rate = {
+            "binance": {
+                "maker": 0,
+                "taker": 0.00017,
+            },
+            "okex": {
+                "maker": 0,
+                "taker": 0.0002,
+            },
+        }
     data_path = join(get_project_root(), DATA_DIR)
-    df1 = pd.read_csv(f"{data_path}/binance_orders_{date_now_str()}.csv")
+    df1 = pd.read_csv(f"{data_path}/{env}_binance_orders_{date_now_str()}.csv")
     df1 = df1.drop(columns=["timeInForce"])
 
-    df2 = pd.read_csv(f"{data_path}/okex_orders_{date_now_str()}.csv")
+    df2 = pd.read_csv(f"{data_path}/{env}_okex_orders_{date_now_str()}.csv")
 
     df3 = pd.concat([df1, df2]).sort_values(
         ["timestamp", "clientOrderId"], ascending=[True, True]
@@ -288,13 +335,21 @@ def analysis_orders():
     print("")
     print("=" * 20, "汇总", "=" * 20)
     ok_orders = df3.loc[df3["symbol"].str.contains("-SWAP", case=True)]
-    print(f"okex订单: count={ok_orders['id'].count()}, notional={ok_orders['cost'].sum()}")
+    print(
+        f"okex订单: count={ok_orders['id'].count()}, notional={ok_orders['cost'].sum()}"
+    )
     bn_orders = df3.loc[~df3["symbol"].str.contains("-SWAP", case=True)]
-    print(f"bn订单:   count={bn_orders['id'].count()}, notional={bn_orders['cost'].sum()}")
+    print(
+        f"bn订单:   count={bn_orders['id'].count()}, notional={bn_orders['cost'].sum()}"
+    )
 
-    notnull_df3 = df3[~df3['clientOrderId'].isnull()]
-    align_orders = notnull_df3.loc[notnull_df3['clientOrderId'].str.contains('TalgT', case=True)]
-    print(f"对齐订单: count={align_orders['id'].count()}, notional={align_orders['cost'].sum()}")
+    notnull_df3 = df3[~df3["clientOrderId"].isnull()]
+    align_orders = notnull_df3.loc[
+        notnull_df3["clientOrderId"].str.contains("TalgT", case=True)
+    ]
+    print(
+        f"对齐订单: count={align_orders['id'].count()}, notional={align_orders['cost'].sum()}"
+    )
     print(f"毛利润:   {df3['dyn_cost'].sum()}")
     print(f"净利润:   {df3['dyn_cost'].sum() - df3['bn_cost'].sum() * 0.00017}")
 
@@ -303,16 +358,35 @@ def analysis_orders():
     df4 = df3.assign(_symbol=df3.apply(set_normalized_symbol, axis=1))
     # df4.groupby('_symbol')['dyn_cost'].sum()
     df5 = df4.groupby("_symbol")["dyn_amount"].sum().to_frame()
-    df5['毛利润'] = (df4.groupby("_symbol")["dyn_cost"].sum().to_frame())['dyn_cost']
+    df5["毛利润"] = (df4.groupby("_symbol")["dyn_cost"].sum().to_frame())[
+        "dyn_cost"
+    ]
     df5["手续费"] = (df4.groupby("_symbol")["cost"].sum() * 0.000085).to_frame()[
         "cost"
     ]
-    df5 = df5.rename(columns={"dyn_cost": "毛利润", "dyn_amount":"净仓位"})
+    df5 = df5.rename(columns={"dyn_cost": "毛利润", "dyn_amount": "净仓位"})
     df5["净利润"] = df5["毛利润"] - df5["手续费"]
 
     df5.index.rename("标的", inplace=True)
 
     print(df5)
+
+
+def gen_funding_csv(exchange, since, env):
+    res = exchange.fetch_funding_history(since=since)
+    save_dictlist_to_csv(
+        f"{DATA_DIR}/{env}_{exchange.ex_name}_funding_{date_now_str()}.csv",
+        headers=[
+            "id",
+            "symbol",
+            "timestamp",
+            "datetime",
+            "amount",
+            "code",
+        ],
+        dictlist=res,
+        file_mode="w",
+    )
 
 
 @click.command()
@@ -344,8 +418,7 @@ def main(env: str, since: str):
     init_globals(config)
 
     symbols = [
-        get_ccxt_symbol(symbol.symbol_name)
-        for symbol in config.cross_arbitrage_symbol_datas
+        symbol.symbol_name for symbol in config.cross_arbitrage_symbol_datas
     ]
     print(symbols)
     since = int(since)
@@ -375,10 +448,13 @@ def main(env: str, since: str):
     )
     sync_symbols_orders(okex, symbols, since=since, until=until, dir=DATA_DIR)
 
-    gen_order_csv(okex)
-    gen_order_csv(binance)
+    gen_order_csv(okex, env=env)
+    gen_order_csv(binance, env=env)
 
-    # analysis_orders()
+    gen_funding_csv(okex, since, env=env)
+    gen_funding_csv(binance, since, env=env)
+
+    # analysis_orders(env)
 
 
 if __name__ == "__main__":

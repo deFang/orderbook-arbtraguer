@@ -1,5 +1,6 @@
 from decimal import Decimal
 from enum import Enum
+from functools import lru_cache
 import logging
 import time
 from typing import Optional
@@ -8,8 +9,8 @@ from cross_arbitrage.config.symbol import SymbolConfig
 from cross_arbitrage.order.config import OrderConfig
 from cross_arbitrage.order.market import market_order
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
-from cross_arbitrage.utils.exchange import get_symbol_min_amount
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt
+from cross_arbitrage.utils.exchange import get_bag_size, get_symbol_min_amount
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt, get_exchange_symbol_from_exchange
 import orjson
 import redis
 
@@ -63,28 +64,32 @@ def refresh_position_status(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange]
 
 def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange: ccxt.Exchange, symbols: list[str]):
     exchange: ccxt.binanceusdm | ccxt.okex
-    ccxt_symbols = list(map(get_ccxt_symbol, symbols))
+
+    exchange_symbol_names = list(map(lambda s: get_exchange_symbol_from_exchange(exchange, s).name, symbols))
     positions = []
 
     match exchange:
         case ccxt.binanceusdm():
-            positions = exchange.fetch_positions(ccxt_symbols)
+            positions = exchange.fetch_positions(exchange_symbol_names)
             if len(positions) == 0:
                 raise Exception(f'No position found for {symbols}')
         case ccxt.okex():
             okex_positions = []
-            for chunk in [ccxt_symbols[i:i + 10] for i in range(0, len(ccxt_symbols), 10)]:
+            for chunk in [exchange_symbol_names[i:i + 10] for i in range(0, len(exchange_symbol_names), 10)]:
                 okex_positions += exchange.fetch_positions(chunk)
+                time.sleep(1)
             positions += [pos for pos in okex_positions if pos['info']['mgnMode']== 'cross']
     if not positions:
         return None
     for position in positions:
         symbol = get_common_symbol_from_ccxt(position['symbol'])
-        contract_size = Decimal(str(position['contractSize']))
+        exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
+        bag_size = get_bag_size(exchange, symbol)
+        # contract_size = Decimal(str(position['contractSize']))
         contracts = Decimal(str(position['contracts']))
-        avg_price = Decimal(str(position['entryPrice'])) if position['entryPrice'] else None
-        mark_price = Decimal(str(position['markPrice'])) if position['markPrice'] else None
-        qty = contracts * contract_size
+        avg_price = Decimal(str(position['entryPrice'])) / exchange_symbol.multiplier if position['entryPrice'] else None
+        mark_price = Decimal(str(position['markPrice'])) / exchange_symbol.multiplier if position['markPrice'] else None
+        qty = contracts * bag_size
         direction = PositionDirection.long if position['side'] == 'long' else PositionDirection.short
         position_status = PositionStatus(direction=direction, qty=qty, avg_price=avg_price, mark_price=mark_price)
         update_position_status(rc, exchange_name, symbol, position_status)
@@ -94,21 +99,39 @@ def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[s
     while not ctx.is_canceled():
         start_time = time.time()
         refresh_position_status(rc, exchanges, symbols)
-        sleep_with_context(ctx, 10 - (time.time() - start_time))
+        sleep_with_context(ctx, 20 - (time.time() - start_time))
+
+
+@lru_cache
+def _lock_keys_fn(symbol: str, exchange_names: list[str]):
+    return [f'{exchange_name}:{symbol}' for exchange_name in exchange_names]
 
 
 def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list, config: OrderConfig):
     order_prefix = 'croTalg'
     unprocessed_symbol_list = []
+    exchange_names = config.exchange_pair_names
+
     for symbol in symbols:
         res = []
+        lock_keys = _lock_keys_fn(symbol, exchange_names)
         with rc.pipeline() as pipe:
             pipe.multi()
-            pipe.sismember('order:signal:processing', symbol)
-            pipe.sadd('order:signal:processing', symbol)
+            # for lock_key in lock_keys:
+            #     pipe.sismember('order:signal:processing', lock_key)
+            for lock_key in lock_keys:
+                pipe.sadd('order:signal:processing', lock_key)
             res = pipe.execute()
-        if res[0] == True:
-            continue
+
+        # lock_failed_list = res[:len(lock_keys)]
+        # if any(lock_failed_list):
+        #     rc.srem('order:signal:processing', *map(lambda x: x[0], filter(lambda x: not x[1], zip(lock_keys, lock_failed_list))))
+
+        locked_list = res[:len(lock_keys)]
+        if not all(locked_list):
+            # revert locked keys
+            rc.srem('order:signal:processing', 
+                    *map(lambda x: x[0], filter(lambda x: x[1], zip(lock_keys, locked_list))))
         else:
             unprocessed_symbol_list.append(symbol)
 
@@ -153,7 +176,7 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             else:
                 delta = positions[0][1].qty - positions[1][1].qty
 
-            symbol_info:SymbolConfig = config.get_symbol_datas(symbol)[0]
+            symbol_info: SymbolConfig = config.get_symbol_datas(symbol)[0]
 
             if abs(delta) >= min_qty:
                 logging.info(f"align position: {symbol} {positions}")
@@ -163,7 +186,8 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                 pos: PositionStatus = positions[0][1]
 
                 if pos.mark_price * delta > Decimal(str(symbol_info.max_notional_per_order)) * 4:
-                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(symbol, positions, min_qty))
+                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(
+                        symbol, positions, min_qty))
                     continue
 
                 side = 'sell' if pos.direction == PositionDirection.long else 'buy'
@@ -176,7 +200,8 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                 pos: PositionStatus = positions[1][1]
 
                 if pos.mark_price * (-delta) > Decimal(str(symbol_info.max_notional_per_order)) * 4:
-                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(symbol, positions, min_qty))
+                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(
+                        symbol, positions, min_qty))
                     continue
 
                 side = 'sell' if pos.direction == PositionDirection.long else 'buy'
@@ -188,7 +213,8 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             logging.error(ex)
             logging.exception(ex)
         finally:
-            rc.srem('order:signal:processing', symbol)
+            lock_keys = _lock_keys_fn(symbol, exchange_names)
+            rc.srem('order:signal:processing', *lock_keys)
 
 
 def align_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list, config: OrderConfig):
@@ -196,5 +222,9 @@ def align_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str
 
     while not ctx.is_canceled():
         start_time = time.time()
-        align_position(rc, exchanges, symbols, config)
+        try:
+            align_position(rc, exchanges, symbols, config)
+        except Exception as ex:
+            logging.error(ex)
+            logging.exception(ex)
         sleep_with_context(ctx, 30 - (time.time() - start_time))

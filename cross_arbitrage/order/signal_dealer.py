@@ -16,12 +16,12 @@ import redis
 import numpy as np
 
 from cross_arbitrage.fetch.utils.common import now_ms
-from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol
+from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_exchange_symbol_from_exchange
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from .config import OrderConfig
 from .order_book import OrderSignal
-from .market import align_qty, maker_only_order, market_order, cancel_order, get_contract_size
-from .model import Order as OrderModel, OrderStatus, normalize_ccxt_order
+from .market import align_qty, maker_only_order, market_order, cancel_order
+from .model import Order as OrderModel, OrderStatus, normalize_common_ccxt_order
 
 
 class _Status(BaseModel):
@@ -47,7 +47,7 @@ class OrderDataModel(CSVModel):
 def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exchanges: Dict[str, ccxt.Exchange], rc: redis.Redis):
 
     symbol = signal.symbol
-    ccxt_symbol = get_ccxt_symbol(symbol)
+    lock_key = f'{signal.maker_exchange}:{symbol}'
     maker_exchange: ccxt.okex = exchanges[signal.maker_exchange]
     taker_exchange: ccxt.binance = exchanges[signal.taker_exchange]
 
@@ -57,7 +57,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
     if order_qty == 0:
         if config.debug:
             logging.info(f"order_qty is 0, skip place order: {signal}")
-        rc.srem('order:signal:processing', symbol)
+        rc.srem('order:signal:processing', lock_key)
 
         stat = OrderDataModel(
             signal=signal, status=_Status.default('no_enough_margin'))
@@ -73,7 +73,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
 
     # if order_mode_is_pending(ctx):
     #     logging.info(f'dry run, skip place order: {signal}')
-    #     rc.srem('order:signal:processing', symbol)
+    #     rc.srem('order:signal:processing', lock_key)
     #     return
 
     retry = 2
@@ -90,7 +90,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             logging.exception(e)
 
             if not retry:
-                rc.srem('order:signal:processing', symbol)
+                rc.srem('order:signal:processing', lock_key)
 
                 stat = OrderDataModel(
                     signal=signal, status=_Status.default('maker_order_failed'))
@@ -98,7 +98,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
 
     if maker_order['status'] in ['rejected', 'expired', 'canceled']:
         logging.error(f'maker order rejected: {maker_order}')
-        rc.srem('order:signal:processing', symbol)
+        rc.srem('order:signal:processing', lock_key)
         return
 
     maker_order_id = maker_order['id']
@@ -107,18 +107,21 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
     maker_filled_qty = Decimal('0')
     followed_qty = Decimal('0')
 
+    taker_exchange_symbol = get_exchange_symbol_from_exchange(taker_exchange, symbol)
+    taker_exchange_bag_size = Decimal(
+        str(taker_exchange.market(taker_exchange_symbol.name)['contractSize'])) * taker_exchange_symbol.multiplier
     taker_exchange_minimum_qty = Decimal(
-        str(taker_exchange.market(ccxt_symbol)['limits']['amount']['min']))
-    taker_exchange_contract_size = Decimal(
-        str(taker_exchange.market(ccxt_symbol)['contractSize']))
+        str(taker_exchange.market(taker_exchange_symbol.name)['limits']['amount']['min'])) * taker_exchange_bag_size
 
     # set to start exiting tasks
     _clear = False
     # set for finished exiting tasks
     _cleared = False
     mark_clear_time = None
+    is_canceled_or_filled = False
     is_filled = False
     is_canceled_by_program = False
+    new_trade = False
 
     while not _cleared:
         if ctx.is_canceled() and not _clear:
@@ -129,12 +132,12 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
         items = []
         try:
             n = rc.blpop(get_order_status_key(
-                maker_order_id, 'okex'), timeout=0.2)
+                maker_order_id, signal.maker_exchange), timeout=0.05)
             if n:
                 items.append(n[1])
                 while True:
                     n = rc.lpop(get_order_status_key(
-                        maker_order_id, 'okex'), 10)
+                        maker_order_id, signal.maker_exchange), 10)
                     if n:
                         items.append(*n)
                     else:
@@ -143,8 +146,6 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             logging.warning(f'get a redis error: {type(e)}')
             logging.exception(e)
 
-        is_canceled_or_filled = False
-        new_trade = False
         for item in items:
             data = orjson.loads(item)
             event = OrderModel.parse_obj(data)
@@ -172,18 +173,19 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                 logging.info(
                     f'need_order_qty: {need_order_qty}, taker_exchange_minimum_qty: {taker_exchange_minimum_qty}')
             logging.info(
-                f'[{taker_exchange}][{symbol}] new trade, need_order_qty: {need_order_qty}')
+                f'[maker_exchange={signal.maker_exchange}] [{symbol}] new trade, [{signal.taker_exchange}] need_order_qty: {need_order_qty}')
             if need_order_qty >= taker_exchange_minimum_qty:
                 taker_client_id_count += 1
                 taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}'
                 logging.info(
-                    f'[{taker_exchange}][{symbol}] place taker order: {need_order_qty}')
+                    f'[{signal.taker_exchange}] [{symbol}] place taker order: {need_order_qty}')
                 try:
                     order = market_order(taker_exchange, symbol,
                                          signal.taker_side, need_order_qty,
                                          client_id=taker_client_id)
                     followed_qty += Decimal(str(order['amount'])) * \
-                        taker_exchange_contract_size
+                        taker_exchange_bag_size
+                    new_trade = False
                 except Exception as e:
                     logging.error(f'place taker order failed: {type(e)}')
                     logging.exception(e)
@@ -197,7 +199,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                 if mark_clear_time is None:
                     mark_clear_time = time.time()
                     continue
-                elif time.time() - mark_clear_time > 10:
+                elif time.time() - mark_clear_time > 20:
                     logging.info(
                         f'order should be canceled, but not signal fetched: {maker_order_id}({maker_client_id})')
                 else:
@@ -205,33 +207,39 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                     continue
             # check position before exit
             # if not is_canceled_or_filled:
-            if (not is_filled):
+            if (not is_filled) or is_canceled_by_program:
                 order_info = _get_order(maker_exchange, symbol, maker_order_id)
                 if order_info:
                     filled_qty = Decimal(order_info.filled)
-                    if filled_qty > followed_qty:
-                        logging.info(
-                            f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
-                        new_qty, _ = align_qty(
-                            taker_exchange, symbol, filled_qty - followed_qty)
-                        if new_qty > taker_exchange_minimum_qty:
-                            retry = 3
-                            while retry > 0:
-                                try:
-                                    taker_client_id_count += 1
-                                    taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}Tfix'
-                                    order = market_order(taker_exchange, symbol,
-                                                         signal.taker_side, new_qty,
-                                                         client_id=taker_client_id)
-                                    retry = 0
-                                except Exception as e:
-                                    logging.error(
-                                        f'place taker order failed: {type(e)}')
-                                    logging.exception(e)
-                                    retry -= 1
-                    elif filled_qty < followed_qty:
-                        logging.warn(
-                            f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
+                    if filled_qty != maker_filled_qty:
+                        logging.warning('order filled qty not match: old: {}, new: {}'.format(maker_filled_qty, filled_qty))
+                    maker_filled_qty = filled_qty
+                else:
+                    logging.warning('order info not found: {}'.format(maker_order_id))
+
+            if maker_filled_qty > followed_qty:
+                logging.info(
+                    f"order qty is not match: {symbol} maker qty {maker_filled_qty}, taker qty {followed_qty}")
+                new_qty, _ = align_qty(
+                    taker_exchange, symbol, maker_filled_qty - followed_qty)
+                if new_qty > taker_exchange_minimum_qty:
+                    retry = 3
+                    while retry > 0:
+                        try:
+                            taker_client_id_count += 1
+                            taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}Tfix'
+                            order = market_order(taker_exchange, symbol,
+                                                    signal.taker_side, new_qty,
+                                                    client_id=taker_client_id)
+                            retry = 0
+                        except Exception as e:
+                            logging.error(
+                                f'place taker order failed: {type(e)}')
+                            logging.exception(e)
+                            retry -= 1
+            elif maker_filled_qty < followed_qty:
+                logging.warn(
+                    f"order qty is not match: {symbol} maker qty {maker_filled_qty}, taker qty {followed_qty}")
 
             try:
                 now = time.time()
@@ -253,7 +261,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             if mark_clear_time is not None:
                 sleep_time = 10 - (time.time() - mark_clear_time)
             sleep_with_context(ctx, sleep_time)
-            rc.srem('order:signal:processing', symbol)
+            rc.srem('order:signal:processing', lock_key)
             _cleared = True
 
             return
@@ -275,7 +283,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             continue
         ob = orjson.loads(ob_raw)
 
-        if should_cancel_makeonly_order(ctx, config, signal, ob, order_qty, taker_exchange_contract_size):
+        if should_cancel_makeonly_order(ctx, config, signal, ob, order_qty, taker_exchange_bag_size):
             logging.info(
                 f'cancel makeonly order: {maker_order_id}({maker_client_id})')
             ok = cancel_order_once(maker_exchange, symbol, maker_order_id)
@@ -319,10 +327,10 @@ def _cancel_order(exchange: ccxt.Exchange, symbol: str, order_id: str):
 @retry(3, raise_exception=False)
 def _get_order(exchange: ccxt.Exchange, symbol: str, order_id: str) -> OrderModel:
     if symbol:
-        symbol = get_ccxt_symbol(symbol)
+        symbol = get_exchange_symbol_from_exchange(exchange, symbol).name
     ccxt_order = exchange.fetch_order(id=order_id, symbol=symbol)
 
-    res = normalize_ccxt_order(ccxt_order, get_exchange_name(exchange))
+    res = normalize_common_ccxt_order(ccxt_order, get_exchange_name(exchange))
     return res
 
 
@@ -342,8 +350,8 @@ def cancel_order_once(exchange: ccxt.Exchange, symbol: str, order_id: str):
 
 
 def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal: OrderSignal,
-                                 taker_ob: dict, need_depth_qty: Decimal, contract_size: Decimal):
-    contract_size = np.float64(contract_size)
+                                 taker_ob: dict, need_depth_qty: Decimal, bag_size: Decimal):
+    bag_size = np.float64(bag_size)
 
     threshold_line = signal.maker_price / \
         Decimal(str(1 + signal.cancel_order_threshold))
@@ -360,7 +368,7 @@ def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal
             if ob[-1, 0] < threshold_line:
                 return False
 
-            ob[:, 1] *= contract_size
+            ob[:, 1] *= bag_size
             if ob[ob[:, 0] <= threshold_line, 1].sum() < need_depth_qty:
                 if config.debug:
                     logging.info(
@@ -378,7 +386,7 @@ def should_cancel_makeonly_order(ctx: CancelContext, config: OrderConfig, signal
             if ob[-1, 0] > threshold_line:
                 return False
 
-            ob[:, 1] *= contract_size
+            ob[:, 1] *= bag_size
             if ob[ob[:, 0] >= threshold_line, 1].sum() < need_depth_qty:
                 if config.debug:
                     logging.info(

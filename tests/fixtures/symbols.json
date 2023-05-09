@@ -54,6 +54,14 @@
       "okex": "APT-USDT-SWAP",
       "binance": "APTUSDT",
       "ccxt": "APT/USDT:USDT"
+    },
+    "PEPE/USDT": {
+      "okex": "PEPE-USDT-SWAP",
+      "binance": {
+        "name": "1000PEPEUSDT",
+        "multiplier": "1000"
+      },
+      "ccxt": ["PEPE/USDT:USDT", "1000PEPE/USDT:USDT"]
     }
   }
 }
