@@ -102,7 +102,6 @@ def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[s
         sleep_with_context(ctx, 20 - (time.time() - start_time))
 
 
-@lru_cache
 def _lock_keys_fn(symbol: str, exchange_names: list[str]):
     return [f'{exchange_name}:{symbol}' for exchange_name in exchange_names]
 
