@@ -1,5 +1,6 @@
 from decimal import Decimal
 from enum import Enum
+from functools import lru_cache
 import logging
 import time
 from typing import Optional
@@ -101,18 +102,36 @@ def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[s
         sleep_with_context(ctx, 20 - (time.time() - start_time))
 
 
+@lru_cache
+def _lock_keys_fn(symbol: str, exchange_names: list[str]):
+    return [f'{exchange_name}:{symbol}' for exchange_name in exchange_names]
+
+
 def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list, config: OrderConfig):
     order_prefix = 'croTalg'
     unprocessed_symbol_list = []
+    exchange_names = config.exchange_pair_names
+
     for symbol in symbols:
         res = []
+        lock_keys = _lock_keys_fn(symbol, exchange_names)
         with rc.pipeline() as pipe:
             pipe.multi()
-            pipe.sismember('order:signal:processing', symbol)
-            pipe.sadd('order:signal:processing', symbol)
+            # for lock_key in lock_keys:
+            #     pipe.sismember('order:signal:processing', lock_key)
+            for lock_key in lock_keys:
+                pipe.sadd('order:signal:processing', lock_key)
             res = pipe.execute()
-        if res[0] == True:
-            continue
+
+        # lock_failed_list = res[:len(lock_keys)]
+        # if any(lock_failed_list):
+        #     rc.srem('order:signal:processing', *map(lambda x: x[0], filter(lambda x: not x[1], zip(lock_keys, lock_failed_list))))
+
+        locked_list = res[:len(lock_keys)]
+        if not all(locked_list):
+            # revert locked keys
+            rc.srem('order:signal:processing', 
+                    *map(lambda x: x[0], filter(lambda x: x[1], zip(lock_keys, locked_list))))
         else:
             unprocessed_symbol_list.append(symbol)
 
@@ -157,7 +176,7 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             else:
                 delta = positions[0][1].qty - positions[1][1].qty
 
-            symbol_info:SymbolConfig = config.get_symbol_datas(symbol)[0]
+            symbol_info: SymbolConfig = config.get_symbol_datas(symbol)[0]
 
             if abs(delta) >= min_qty:
                 logging.info(f"align position: {symbol} {positions}")
@@ -167,7 +186,8 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                 pos: PositionStatus = positions[0][1]
 
                 if pos.mark_price * delta > Decimal(str(symbol_info.max_notional_per_order)) * 4:
-                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(symbol, positions, min_qty))
+                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(
+                        symbol, positions, min_qty))
                     continue
 
                 side = 'sell' if pos.direction == PositionDirection.long else 'buy'
@@ -180,7 +200,8 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                 pos: PositionStatus = positions[1][1]
 
                 if pos.mark_price * (-delta) > Decimal(str(symbol_info.max_notional_per_order)) * 4:
-                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(symbol, positions, min_qty))
+                    logging.warning('align position: too much money in position, skip: symbol={}, positions={}, min_qty={}'.format(
+                        symbol, positions, min_qty))
                     continue
 
                 side = 'sell' if pos.direction == PositionDirection.long else 'buy'
@@ -192,7 +213,8 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             logging.error(ex)
             logging.exception(ex)
         finally:
-            rc.srem('order:signal:processing', symbol)
+            lock_keys = _lock_keys_fn(symbol, exchange_names)
+            rc.srem('order:signal:processing', *lock_keys)
 
 
 def align_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list, config: OrderConfig):

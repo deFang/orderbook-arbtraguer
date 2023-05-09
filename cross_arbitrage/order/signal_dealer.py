@@ -47,6 +47,7 @@ class OrderDataModel(CSVModel):
 def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exchanges: Dict[str, ccxt.Exchange], rc: redis.Redis):
 
     symbol = signal.symbol
+    lock_key = f'{signal.maker_exchange}:{symbol}'
     maker_exchange: ccxt.okex = exchanges[signal.maker_exchange]
     taker_exchange: ccxt.binance = exchanges[signal.taker_exchange]
 
@@ -56,7 +57,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
     if order_qty == 0:
         if config.debug:
             logging.info(f"order_qty is 0, skip place order: {signal}")
-        rc.srem('order:signal:processing', symbol)
+        rc.srem('order:signal:processing', lock_key)
 
         stat = OrderDataModel(
             signal=signal, status=_Status.default('no_enough_margin'))
@@ -72,7 +73,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
 
     # if order_mode_is_pending(ctx):
     #     logging.info(f'dry run, skip place order: {signal}')
-    #     rc.srem('order:signal:processing', symbol)
+    #     rc.srem('order:signal:processing', lock_key)
     #     return
 
     retry = 2
@@ -89,7 +90,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             logging.exception(e)
 
             if not retry:
-                rc.srem('order:signal:processing', symbol)
+                rc.srem('order:signal:processing', lock_key)
 
                 stat = OrderDataModel(
                     signal=signal, status=_Status.default('maker_order_failed'))
@@ -97,7 +98,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
 
     if maker_order['status'] in ['rejected', 'expired', 'canceled']:
         logging.error(f'maker order rejected: {maker_order}')
-        rc.srem('order:signal:processing', symbol)
+        rc.srem('order:signal:processing', lock_key)
         return
 
     maker_order_id = maker_order['id']
@@ -260,7 +261,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             if mark_clear_time is not None:
                 sleep_time = 10 - (time.time() - mark_clear_time)
             sleep_with_context(ctx, sleep_time)
-            rc.srem('order:signal:processing', symbol)
+            rc.srem('order:signal:processing', lock_key)
             _cleared = True
 
             return
