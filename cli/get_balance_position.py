@@ -1,3 +1,4 @@
+from decimal import Decimal
 import logging
 from os.path import exists, join
 import ccxt
@@ -6,8 +7,9 @@ from cross_arbitrage.fetch.utils.common import base_name, get_project_root
 
 from cross_arbitrage.order.config import get_config
 from cross_arbitrage.order.globals import init_globals
+from cross_arbitrage.utils.exchange import get_bag_size
 from cross_arbitrage.utils.logger import init_logger
-from cross_arbitrage.utils.symbol_mapping import init_symbol_mapping_from_file
+from cross_arbitrage.utils.symbol_mapping import get_common_symbol_from_exchange_symbol, init_symbol_mapping_from_file
 
 def print_balance(exchange):
     balance1 = exchange.fetch_balance()
@@ -40,6 +42,13 @@ def print_positions(exchange):
     positions = exchange.fetch_positions()
 
     positions = [p for p in positions if p['contracts'] > 0]
+    for p in positions:
+        exchange_symbol = p['info']['symbol'] if p['info'].get('symbol') else p['info']['instId']
+        common_symbol = get_common_symbol_from_exchange_symbol(exchange_symbol, exchange.ex_name)
+        bag_size = get_bag_size(exchange, common_symbol)
+        p['symbol'] = common_symbol
+        p['_amount'] = float(Decimal(str(p['contracts'])) * bag_size)
+        p['_avg_price'] = float(Decimal(str(p['entryPrice'])) * Decimal(str(p['contractSize'])) / bag_size)
 
     return positions
 
@@ -104,15 +113,15 @@ def main(env):
         p1 = d1[symbol]
         p2 = d2.get(symbol)
         if p2:
-            print(f"binance {p1['symbol']:<20} {round(p1['contracts'] *  p1['contractSize'],2):<10} {round(p1['notional'],2):<10} {round(p1['entryPrice'],4):<10} {p1['side']:<5} {p1['unrealizedPnl']}")
-            print(f"okex    {p2['symbol']:<20} {round(p2['contracts'] *  p2['contractSize'],2):<10} {round(p2['notional'],2):<10} {round(p2['entryPrice'],4):<10} {p2['side']:<5} {p2['unrealizedPnl']}")
+            print(f"binance {p1['symbol']:<20} {round(p1['_amount'],2):<10} {round(p1['notional'],2):<10} {round(p1['_avg_price'],4):<10} {p1['side']:<5} {p1['unrealizedPnl']}")
+            print(f"okex    {p2['symbol']:<20} {round(p2['_amount'],2):<10} {round(p2['notional'],2):<10} {round(p2['_avg_price'],4):<10} {p2['side']:<5} {p2['unrealizedPnl']}")
         else:
-            print(f"- binance {p1['symbol']} {p1['contracts'] *  p1['contractSize']} {p1['notional']} {round(p1['entryPrice'],4):<10} {p1['side']} {p1['unrealizedPnl']}")
+            print(f"- binance {p1['symbol']} {p1['_amount']} {p1['notional']} {round(p1['_avg_price'],4):<10} {p1['side']} {p1['unrealizedPnl']}")
 
     for symbol in d2.keys():
         p2 = d2[symbol]
         if not d1.get(symbol):
-            print(f"- okex {p2['symbol']} {p2['contracts'] *  p2['contractSize']} {p2['notional']} {round(p2['entryPrice'],4):<10} {p2['side']} {p2['unrealizedPnl']}")
+            print(f"- okex {p2['symbol']} {p2['_amount']} {p2['notional']} {round(p2['_avg_price'],4):<10} {p2['side']} {p2['unrealizedPnl']}")
 
 
 if __name__ == "__main__":
