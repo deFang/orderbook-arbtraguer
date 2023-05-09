@@ -117,6 +117,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
     # set for finished exiting tasks
     _cleared = False
     mark_clear_time = None
+    is_canceled_or_filled = False
     is_filled = False
     is_canceled_by_program = False
     new_trade = False
@@ -143,8 +144,6 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
         except redis.RedisError as e:
             logging.warning(f'get a redis error: {type(e)}')
             logging.exception(e)
-
-        is_canceled_or_filled = False
 
         for item in items:
             data = orjson.loads(item)
@@ -199,7 +198,7 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                 if mark_clear_time is None:
                     mark_clear_time = time.time()
                     continue
-                elif time.time() - mark_clear_time > 10:
+                elif time.time() - mark_clear_time > 20:
                     logging.info(
                         f'order should be canceled, but not signal fetched: {maker_order_id}({maker_client_id})')
                 else:
@@ -207,33 +206,34 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                     continue
             # check position before exit
             # if not is_canceled_or_filled:
-            if (not is_filled) or new_trade:
+            if (not is_filled) or is_canceled_by_program:
                 order_info = _get_order(maker_exchange, symbol, maker_order_id)
                 if order_info:
                     filled_qty = Decimal(order_info.filled)
-                    if filled_qty > followed_qty:
-                        logging.info(
-                            f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
-                        new_qty, _ = align_qty(
-                            taker_exchange, symbol, filled_qty - followed_qty)
-                        if new_qty > taker_exchange_minimum_qty:
-                            retry = 3
-                            while retry > 0:
-                                try:
-                                    taker_client_id_count += 1
-                                    taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}Tfix'
-                                    order = market_order(taker_exchange, symbol,
-                                                         signal.taker_side, new_qty,
-                                                         client_id=taker_client_id)
-                                    retry = 0
-                                except Exception as e:
-                                    logging.error(
-                                        f'place taker order failed: {type(e)}')
-                                    logging.exception(e)
-                                    retry -= 1
-                    elif filled_qty < followed_qty:
-                        logging.warn(
-                            f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
+
+            if filled_qty > followed_qty:
+                logging.info(
+                    f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
+                new_qty, _ = align_qty(
+                    taker_exchange, symbol, filled_qty - followed_qty)
+                if new_qty > taker_exchange_minimum_qty:
+                    retry = 3
+                    while retry > 0:
+                        try:
+                            taker_client_id_count += 1
+                            taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}Tfix'
+                            order = market_order(taker_exchange, symbol,
+                                                    signal.taker_side, new_qty,
+                                                    client_id=taker_client_id)
+                            retry = 0
+                        except Exception as e:
+                            logging.error(
+                                f'place taker order failed: {type(e)}')
+                            logging.exception(e)
+                            retry -= 1
+            elif filled_qty < followed_qty:
+                logging.warn(
+                    f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
 
             try:
                 now = time.time()

@@ -97,7 +97,7 @@ def refresh_position_loop(ctx: CancelContext, rc: redis.Redis, exchanges: dict[s
     while not ctx.is_canceled():
         start_time = time.time()
         refresh_position_status(rc, exchanges, symbols)
-        sleep_with_context(ctx, 10 - (time.time() - start_time))
+        sleep_with_context(ctx, 20 - (time.time() - start_time))
 
 
 def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols: list, config: OrderConfig):
