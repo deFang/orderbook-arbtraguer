@@ -210,12 +210,17 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                 order_info = _get_order(maker_exchange, symbol, maker_order_id)
                 if order_info:
                     filled_qty = Decimal(order_info.filled)
+                    if filled_qty != maker_filled_qty:
+                        logging.warning('order filled qty not match: old: {}, new: {}'.format(maker_filled_qty, filled_qty))
+                    maker_filled_qty = filled_qty
+                else:
+                    logging.warning('order info not found: {}'.format(maker_order_id))
 
-            if filled_qty > followed_qty:
+            if maker_filled_qty > followed_qty:
                 logging.info(
-                    f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
+                    f"order qty is not match: {symbol} maker qty {maker_filled_qty}, taker qty {followed_qty}")
                 new_qty, _ = align_qty(
-                    taker_exchange, symbol, filled_qty - followed_qty)
+                    taker_exchange, symbol, maker_filled_qty - followed_qty)
                 if new_qty > taker_exchange_minimum_qty:
                     retry = 3
                     while retry > 0:
@@ -231,9 +236,9 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                                 f'place taker order failed: {type(e)}')
                             logging.exception(e)
                             retry -= 1
-            elif filled_qty < followed_qty:
+            elif maker_filled_qty < followed_qty:
                 logging.warn(
-                    f"order qty is not match: {symbol} maker qty {filled_qty}, taker qty {followed_qty}")
+                    f"order qty is not match: {symbol} maker qty {maker_filled_qty}, taker qty {followed_qty}")
 
             try:
                 now = time.time()
