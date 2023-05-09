@@ -173,12 +173,12 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                 logging.info(
                     f'need_order_qty: {need_order_qty}, taker_exchange_minimum_qty: {taker_exchange_minimum_qty}')
             logging.info(
-                f'[{taker_exchange}][{symbol}] new trade, need_order_qty: {need_order_qty}')
+                f'[maker_exchange={signal.maker_exchange}] [{symbol}] new trade, [{signal.taker_exchange}] need_order_qty: {need_order_qty}')
             if need_order_qty >= taker_exchange_minimum_qty:
                 taker_client_id_count += 1
                 taker_client_id = f'{taker_client_id_prefix}{taker_client_id_count}'
                 logging.info(
-                    f'[{taker_exchange}][{symbol}] place taker order: {need_order_qty}')
+                    f'[{signal.taker_exchange}] [{symbol}] place taker order: {need_order_qty}')
                 try:
                     order = market_order(taker_exchange, symbol,
                                          signal.taker_side, need_order_qty,
