@@ -1,10 +1,11 @@
+from typing import Dict
 import ccxt
 
 from cross_arbitrage.order.config import OrderConfig
 
 exchanges = {}
 
-order_status_stream_is_ready = False
+order_status_stream_is_ready = {}
 
 
 def init_globals(config: OrderConfig):
@@ -22,9 +23,12 @@ def init_globals(config: OrderConfig):
 
 def get_order_status_stream_is_ready():
     global order_status_stream_is_ready
-    return order_status_stream_is_ready
+    if len(order_status_stream_is_ready.values()) > 0:
+        return all(order_status_stream_is_ready.values())
+    else:
+        return False
 
 
-def set_order_status_stream_is_ready(val: bool = False):
+def set_order_status_stream_is_ready(res: Dict[str, bool]):
     global order_status_stream_is_ready
-    order_status_stream_is_ready = val
+    order_status_stream_is_ready.update(res)

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from cross_arbitrage.fetch.utils.common import ts_to_str
 from cross_arbitrage.order.globals import exchanges
 from cross_arbitrage.utils.symbol_mapping import (
-    get_ccxt_symbol, get_common_symbol_from_ccxt, get_common_symbol_from_exchange_symbol)
+    get_ccxt_symbol, get_common_symbol_from_ccxt, get_common_symbol_from_exchange_symbol, get_exchange_symbol)
 
 
 class OrderType(str, Enum):
@@ -97,6 +97,52 @@ def normalize_okex_order(info) -> Order:
         price=info["px"],
         cost=info["fillNotionalUsd"],
         average_price=info["fillPx"],
+        status=status,
+    )
+
+def normalize_binance_ws_order(info) -> Order:
+    _type = OrderType.market
+    if info["o"]["o"] in ["LIMIT"]:
+        _type = OrderType.limit
+
+    side = OrderSide.buy
+    if info["o"]["S"] == "SELL":
+        side = OrderSide.sell
+
+    symbol = get_common_symbol_from_exchange_symbol(info["o"]["s"], "binance")
+    exchange_symbol = get_exchange_symbol(symbol, 'binance')
+    ccxt_symbol = get_ccxt_symbol(symbol)
+    symbol_info = exchanges["binance"].market(ccxt_symbol)
+
+    status = OrderStatus.new
+    if info["o"]["X"] == "CANCELED":
+        status = OrderStatus.canceled
+    elif info["o"]["X"] in ["EXPIRED"]:
+        status = OrderStatus.rejected
+    elif info["o"]["X"] == "PARTIALLY_FILLED":
+        status = OrderStatus.partially_filled
+    elif info["o"]["X"] == "FILLED":
+        status = OrderStatus.filled
+
+    return Order(
+        id=info["o"]["i"],
+        order_client_id=info["o"]["c"],
+        exchange="binance",
+        timestamp=int(info["T"]),
+        timestamp_str=ts_to_str(int(info["T"]) / 1000),
+        last_trade_timestamp=int(info["o"]["T"]),
+        type=_type,
+        side=side,
+        symbol=symbol,
+        amount=str(
+            Decimal(info["o"]["q"]) * exchange_symbol.multiplier
+        ),
+        filled=str(
+            Decimal(info["o"]["z"]) * exchange_symbol.multiplier
+        ),
+        price=str(Decimal(info["o"]["p"])/exchange_symbol.multiplier),
+        cost=str(Decimal(info["o"]["ap"]) * Decimal(info["o"]["z"])),
+        average_price=str(Decimal(info["o"]["ap"])/exchange_symbol.multiplier),
         status=status,
     )
 

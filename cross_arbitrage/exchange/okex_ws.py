@@ -34,12 +34,16 @@ class OkexWebSocketApp(WebSocketApp):
 class OkexPublicWebSocketClient:
     def __init__(self, context_args={}):
         self.ws_url = "wss://ws.okx.com:8443/ws/v5/public"
+        self.ctx = context_args.pop('ctx', None)
         self.context_args = context_args
         if self.context_args.pop("is_private", False):
+            self.is_private = True
             self.ws_url = "wss://ws.okx.com:8443/ws/v5/private"
             self.public_key = self.context_args.get("public_key")
             self.private_key = self.context_args.get("private_key")
             self.password = self.context_args.get("password")
+        else:
+            self.is_private = False
 
         self.task_queue = self.context_args.pop("task_queue")
         self.ping_interval = self.context_args.get("ping_interval") or 30
@@ -129,8 +133,9 @@ class OkexPublicWebSocketClient:
                     }
                 ]
                 self._send_method(method, params)
-        except:
-            traceback.print_exc()
+        except Exception as ex:
+            # traceback.print_exc()
+            logging.exception(ex)
 
     def _get_order_book_channel(self, symbol, depth=5, interval="100ms"):
         return {
@@ -271,6 +276,7 @@ class OkexPublicWebSocketClient:
                 logging.info(f"binance messsage count: {self.message_count}")
         except Exception as ex:
             logging.error(ex)
+            logging.exception(ex)
         return
 
     def on_ping(self, ws, ping):

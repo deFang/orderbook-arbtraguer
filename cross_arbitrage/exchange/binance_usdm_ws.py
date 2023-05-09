@@ -5,7 +5,11 @@ import threading
 import time
 from urllib.parse import urlparse
 
+import requests
 from websocket import WebSocketApp
+
+from cross_arbitrage.fetch.utils.common import now_s
+from cross_arbitrage.utils.context import sleep_with_context
 
 
 # == binance websocket client
@@ -30,8 +34,20 @@ class BinanceUsdsWebSocketApp(WebSocketApp):
 class BinanceUsdsPublicWebSocketClient:
     def __init__(self, context_args={}):
         self.ws_url = "wss://fstream.binance.com/ws/"
+        self.http_url = "https://fapi.binance.com"
+        self.ctx = context_args.pop("ctx", None)
         self.context_args = context_args
         # self.account = self.context_args.pop("account")
+        if self.context_args.pop("is_private", False):
+            self.is_private = True
+            self.ws_url = "wss://fstream.binance.com/ws"
+            self.public_key = self.context_args.get("public_key")
+            self.private_key = self.context_args.get("private_key")
+            self.http_headers = {"X-MBX-APIKEY": self.public_key}
+        else:
+            self.http_headers = {}
+            self.is_private = False
+
         self.task_queue = self.context_args.pop("task_queue")
         self.ping_interval = self.context_args.get("ping_interval") or 60
         self.ping_timeout = self.context_args.get("ping_timeout") or 10
@@ -43,7 +59,9 @@ class BinanceUsdsPublicWebSocketClient:
                 self.http_proxy_host = urlobj.hostname
                 self.http_proxy_port = urlobj.port
                 self.proxy_type = urlobj.scheme
-                logging.info(f"BinanceWebsocketClient: using proxy {self.http_proxy_host}:{self.http_proxy_port}")
+                logging.info(
+                    f"BinanceWebsocketClient: using proxy {self.http_proxy_host}:{self.http_proxy_port}"
+                )
             except Exception as ex:
                 logging.error(ex)
                 pass
@@ -54,6 +72,8 @@ class BinanceUsdsPublicWebSocketClient:
 
         self.client_ws = None
         self.client_thread = None
+        self.listen_key = None
+        self.listen_key_thread = None
         self.ws_status = "DISCONNECTED"  # ("CONNECTING", "CONNECTED","DISCONNECTING", "DISCONNECTED")
         self.last_ping_timestamp = int(time.time())
         self.cid = 0
@@ -80,15 +100,82 @@ class BinanceUsdsPublicWebSocketClient:
     def _send(self, method, params={}):
         self.send_message(self._build_jsonrpc_method(method, params))
 
-    def auth(self):
-        # method = "public/auth"
-        # params = {
-        #     "grant_type": "client_credentials",
-        #     "client_id": self.account.public_key,
-        #     "client_secret": self.account.private_key,
-        # }
-        # self._send(method, params)
+    def login(self):
         pass
+
+    def start_refresh_listen_key(self):
+        # thread to refresh listen key
+        self.listen_key_thread = threading.Thread(
+            target=self.refresh_listen_key_loop,
+            kwargs={"ctx": self.ctx},
+            daemon=True,
+        )
+        self.listen_key_thread.start()
+
+    def stop_refresh_listen_key(self):
+        if self.listen_key_thread and self.listen_key_thread.is_alive():
+            self.listen_key_thread.join()
+
+    def user_ws_url(self):
+        if self.is_private and self.listen_key:
+            return f"{self.ws_url}/{self.listen_key}"
+        elif self.is_private:
+            raise Exception(f"binance user stream error: listen_key is empty")
+        else:
+            return f"{self.ws_url}"
+
+    def create_listen_key(self) -> bool:
+        resp = requests.post(
+            f"{self.http_url}/fapi/v1/listenKey", headers=self.http_headers
+        )
+        res = resp.json()
+        # print(res)
+        if res and res.get("listenKey"):
+            self.listen_key = res["listenKey"]
+            logging.info(f"creating listen key: {self.listen_key}")
+            return True
+        return False
+
+    def refresh_listen_key(self) -> bool:
+        logging.info(f"refreshing listen key: {self.listen_key}")
+        if self.listen_key == None:
+            return self.create_listen_key()
+        else:
+            resp = requests.put(
+                f"{self.http_url}/fapi/v1/listenKey", headers=self.http_headers
+            )
+            if resp.ok:
+                return True
+            return False
+
+    def remove_listen_key(self) -> bool:
+        # print(f"hit {self.listen_key}")
+        if self.listen_key == None:
+            return False
+        else:
+            resp = requests.delete(
+                f"{self.http_url}/fapi/v1/listenKey", headers=self.http_headers
+            )
+            if resp.ok:
+                print(f"removing listen_key {self.listen_key}...done")
+                self.listen_key = None
+                return True
+            return False
+
+    def refresh_listen_key_loop(self, ctx=None):
+        minutes = 1
+        self.refresh_listen_key()
+        sleep_with_context(self.ctx, minutes * 60)
+
+        while True:
+            if ctx and ctx.is_canceled():
+                # print('exiting refresh listen key loop...')
+                self.remove_listen_key()
+                break
+
+            # 30 min
+            self.refresh_listen_key()
+            sleep_with_context(self.ctx, minutes * 60)
 
     def _get_order_book_channel(self, symbol, depth=5, interval="100ms"):
         return f"{symbol.lower()}@depth{depth}@{interval}"
@@ -109,6 +196,20 @@ class BinanceUsdsPublicWebSocketClient:
             for symbol in symbols
         ]
         self._send(method, channels)
+
+    def watch_user_order(self, symbol=None):
+        # channel = self._get_user_order_channel(symbol=symbol)
+        # if channel:
+        #     self._subscribe_channel([channel])
+        pass
+
+    def watch_user_orders(self, symbols=[]):
+        # channels = [
+        #     self._get_user_order_channel(symbol=symbol) for symbol in symbols
+        # ]
+        # channels = list(filter(lambda x: x != None, channels))
+        # self._subscribe_channel(channels)
+        pass
 
     def get_status(self):
         return self.ws_status
@@ -191,8 +292,11 @@ class BinanceUsdsPublicWebSocketClient:
         if self.client_ws is not None:
             logging.error(f"websocket client is not None")
             return
+        if self.listen_key is None:
+            logging.error(f"websocket listen key is None")
+            return
         self.client_ws = BinanceUsdsWebSocketApp(
-            self.ws_url,
+            self.user_ws_url(),
             on_open=self.on_open,
             on_message=self.on_message,
             on_error=self.on_error,
