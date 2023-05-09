@@ -103,7 +103,7 @@ def normalize_okex_order(info) -> Order:
     )
 
 
-def normalize_binance_order(info) -> Order:
+def normalize_binance_ccxt_order(info) -> Order:
     _type = OrderType.market
     if info["type"] == "limit":
         _type = OrderType.limit
@@ -150,11 +150,11 @@ def normalize_binance_order(info) -> Order:
     )
 
 
-def normalize_common_order(info, ex_name) -> Order:
+def normalize_common_ccxt_order(info, ex_name) -> Order:
     match ex_name:
         case 'okex':
             return normalize_okex_order(info)
         case 'binance':
-            return normalize_binance_order(info)
+            raise normalize_binance_ccxt_order(info)
         case _:
             raise ValueError(f"Unknown exchange: {ex_name}")

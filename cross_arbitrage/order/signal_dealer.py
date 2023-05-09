@@ -21,7 +21,7 @@ from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from .config import OrderConfig
 from .order_book import OrderSignal
 from .market import align_qty, maker_only_order, market_order, cancel_order
-from .model import Order as OrderModel, OrderStatus, normalize_common_order
+from .model import Order as OrderModel, OrderStatus, normalize_common_ccxt_order
 
 
 class _Status(BaseModel):
@@ -330,7 +330,7 @@ def _get_order(exchange: ccxt.Exchange, symbol: str, order_id: str) -> OrderMode
         symbol = get_exchange_symbol_from_exchange(exchange, symbol).name
     ccxt_order = exchange.fetch_order(id=order_id, symbol=symbol)
 
-    res = normalize_common_order(ccxt_order, get_exchange_name(exchange))
+    res = normalize_common_ccxt_order(ccxt_order, get_exchange_name(exchange))
     return res
 
 
