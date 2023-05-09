@@ -76,6 +76,7 @@ def refresh_symbol_position_status(rc: redis.Redis, exchange_name: str, exchange
             okex_positions = []
             for chunk in [exchange_symbol_names[i:i + 10] for i in range(0, len(exchange_symbol_names), 10)]:
                 okex_positions += exchange.fetch_positions(chunk)
+                time.sleep(1)
             positions += [pos for pos in okex_positions if pos['info']['mgnMode']== 'cross']
     if not positions:
         return None
