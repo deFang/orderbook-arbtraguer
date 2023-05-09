@@ -5,17 +5,20 @@ import time
 
 import orjson as json
 from redis import Redis
-from cross_arbitrage.exchange.binance_usdm_ws import BinanceUsdsPublicWebSocketClient
 
+from cross_arbitrage.exchange.binance_usdm_ws import \
+    BinanceUsdsPublicWebSocketClient
 from cross_arbitrage.exchange.okex_ws import OkexPublicWebSocketClient
 from cross_arbitrage.fetch.utils.common import now_s
 from cross_arbitrage.order.config import OrderConfig
-from cross_arbitrage.order.model import OrderStatus, normalize_binance_ws_order, normalize_okex_order
+from cross_arbitrage.order.globals import set_order_status_stream_is_ready
+from cross_arbitrage.order.model import (OrderStatus,
+                                         normalize_binance_ws_order,
+                                         normalize_okex_order)
 from cross_arbitrage.utils.color import color
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.utils.order import get_order_status_key
 from cross_arbitrage.utils.symbol_mapping import symbol_mapping
-from cross_arbitrage.order.globals import set_order_status_stream_is_ready
 
 
 def start_okex_ws_task(cancel_ctx, symbols, task_queue, config: OrderConfig):
@@ -43,19 +46,22 @@ def start_okex_ws_task(cancel_ctx, symbols, task_queue, config: OrderConfig):
     while True:
         if cancel_ctx.is_canceled():
             ws.stop_client()
-            set_order_status_stream_is_ready({'okex': False})
+            set_order_status_stream_is_ready({"okex": False})
             break
 
         # check last_rev_timestamp and restart ws client
         # if now_s() - ws.last_rev_timestamp > 32:
         if ws.client_ws and ws.get_status() in ["DISCONNECTED"]:
             ws.stop_client()
-            set_order_status_stream_is_ready({'okex': False})
+            set_order_status_stream_is_ready({"okex": False})
             time.sleep(2)
             start_exchange_wsclient(ws, "okex")
         time.sleep(5)
 
-def start_binance_ws_task(cancel_ctx, symbols, task_queue, config: OrderConfig):
+
+def start_binance_ws_task(
+    cancel_ctx, symbols, task_queue, config: OrderConfig
+):
     global ws
     try:
         ws = BinanceUsdsPublicWebSocketClient(
@@ -80,16 +86,16 @@ def start_binance_ws_task(cancel_ctx, symbols, task_queue, config: OrderConfig):
         if cancel_ctx.is_canceled():
             ws.stop_client()
             ws.remove_listen_key()
-            set_order_status_stream_is_ready({'binance': False})
+            set_order_status_stream_is_ready({"binance": False})
             break
 
         # check last_rev_timestamp and restart ws client
         # if now_s() - ws.last_rev_timestamp > 62:
         if ws.client_ws and ws.get_status() in ["DISCONNECTED"]:
-                ws.stop_client()
-                set_order_status_stream_is_ready({'binance': False})
-                time.sleep(2)
-                start_exchange_wsclient(ws, "binance")
+            ws.stop_client()
+            set_order_status_stream_is_ready({"binance": False})
+            time.sleep(2)
+            start_exchange_wsclient(ws, "binance")
         time.sleep(5)
 
 
@@ -105,7 +111,9 @@ def start_exchange_wsclient(ws, ex_name):
         if ws.listen_key:
             ws.start_client()
         else:
-            raise Exception(f"start_exchange_wsclient Error: failed with max retry with {ex_name}")
+            raise Exception(
+                f"start_exchange_wsclient Error: failed with max retry with {ex_name}"
+            )
     else:
         ws.start_client()
 
@@ -149,12 +157,14 @@ def process_okex_taskqueue_task(
                         order = normalize_okex_order(o)
                         key = get_order_status_key(order.id, order.exchange)
                         # logging.info(f"-- order status: {order.json()}")
-                        status_color = 'blue'
+                        status_color = "blue"
                         if order.status == OrderStatus.canceled:
-                            status_color = 'yellow'
+                            status_color = "yellow"
                         elif order.status == OrderStatus.filled:
-                            status_color = 'green'
-                        logging.info(f"-- order status: {order.exchange} id={order.id} {order.symbol}  {order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} ")
+                            status_color = "green"
+                        logging.info(
+                            f"-- order status: {order.exchange} id={order.id} {order.symbol}  {order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
+                        )
                         rc.rpush(key, order.json())
         except queue.Empty:
             pass
@@ -174,15 +184,17 @@ def process_binance_taskqueue_task(
             parsed_data = json.loads(data)
             if parsed_data:
                 logging.info(f"-- parsed_data: {parsed_data}")
-                if parsed_data.get('e', None) == "ORDER_TRADE_UPDATE":
+                if parsed_data.get("e", None) == "ORDER_TRADE_UPDATE":
                     order = normalize_binance_ws_order(parsed_data)
                     key = get_order_status_key(order.id, order.exchange)
-                    status_color = 'blue'
+                    status_color = "blue"
                     if order.status == OrderStatus.canceled:
-                        status_color = 'yellow'
+                        status_color = "yellow"
                     elif order.status == OrderStatus.filled:
-                        status_color = 'green'
-                    logging.info(f"-- order status: {order.exchange} id={order.id} {order.symbol}  {order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} ")
+                        status_color = "green"
+                    logging.info(
+                        f"-- order status: {order.exchange} id={order.id} {order.symbol}  {order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
+                    )
                     rc.rpush(key, order.json())
         except queue.Empty:
             pass
@@ -193,31 +205,57 @@ def start_order_status_stream_mainloop(
     config: OrderConfig,
 ):
     symbols = [s.symbol_name for s in config.cross_arbitrage_symbol_datas]
-    config_symbols = {
-        k: v for k, v in symbol_mapping.items() if k in symbols
-    }
+    config_symbols = {k: v for k, v in symbol_mapping.items() if k in symbols}
 
     thread_objects = []
-    task_queue = queue.Queue(maxsize=0)
 
-    thread_objects.append(
-        threading.Thread(
-            target=start_okex_ws_task,
-            args=(cancel_ctx, config_symbols, task_queue, config),
-            name="fetch_okex_order_status_stream_thread",
-            daemon=True,
-        )
+    exchanges = set(
+        [s.makeonly_exchange_name for s in config.cross_arbitrage_symbol_datas]
     )
 
-    thread_objects.append(
-        threading.Thread(
-            target=process_okex_taskqueue_task,
-            args=(cancel_ctx, task_queue, config),
-            name="process_okex_order_status_stream_thread",
-            daemon=True,
+    if "okex" in exchanges:
+        okex_ws_task_queue = queue.Queue(maxsize=0)
+        thread_objects.append(
+            threading.Thread(
+                target=start_okex_ws_task,
+                args=(cancel_ctx, config_symbols, okex_ws_task_queue, config),
+                name="fetch_okex_order_status_stream_thread",
+                daemon=True,
+            )
         )
-    )
 
+        thread_objects.append(
+            threading.Thread(
+                target=process_okex_taskqueue_task,
+                args=(cancel_ctx, okex_ws_task_queue, config),
+                name="process_okex_order_status_stream_thread",
+                daemon=True,
+            )
+        )
+    elif "binance" in exchanges:
+        binance_ws_task_queue = queue.Queue(maxsize=0)
+        thread_objects.append(
+            threading.Thread(
+                target=start_binance_ws_task,
+                args=(
+                    cancel_ctx,
+                    config_symbols,
+                    binance_ws_task_queue,
+                    config,
+                ),
+                name="fetch_binance_order_status_stream_thread",
+                daemon=True,
+            )
+        )
+
+        thread_objects.append(
+            threading.Thread(
+                target=process_binance_taskqueue_task,
+                args=(cancel_ctx, binance_ws_task_queue, config),
+                name="process_binance_order_status_stream_thread",
+                daemon=True,
+            )
+        )
     for thread_object in thread_objects:
         thread_object.start()
 
