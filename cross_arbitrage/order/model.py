@@ -102,8 +102,8 @@ def normalize_okex_order(info) -> Order:
         status=status,
     )
 
-# TODO: for binance implement
-def normalize_common_order(info, ex_name) -> Order:
+
+def normalize_binance_order(info) -> Order:
     _type = OrderType.market
     if info["type"] == "limit":
         _type = OrderType.limit
@@ -113,9 +113,9 @@ def normalize_common_order(info, ex_name) -> Order:
         side = OrderSide.sell
 
     symbol = get_common_symbol_from_ccxt(info["symbol"])
-    exchange_symbol = get_exchange_symbol(symbol, ex_name)
+    exchange_symbol = get_exchange_symbol(symbol, 'binance')
     exchange_symbol_name = exchange_symbol.name
-    symbol_info = exchanges[ex_name].market(exchange_symbol_name)
+    symbol_info = exchanges['binance'].market(exchange_symbol_name)
 
     status = OrderStatus.new
     if info["status"] == "canceled":
@@ -130,7 +130,7 @@ def normalize_common_order(info, ex_name) -> Order:
     return Order(
         id=info["id"],
         order_client_id=info["clientOrderId"],
-        exchange=ex_name,
+        exchange='binance',
         timestamp=int(info["timestamp"]),
         timestamp_str=ts_to_str(int(info["timestamp"]) / 1000),
         last_trade_timestamp=int(info["lastTradeTimestamp"]) if info.get("lastTradeTimestamp") else 0,
@@ -148,3 +148,13 @@ def normalize_common_order(info, ex_name) -> Order:
         average_price=str(Decimal(info["average"]) / exchange_symbol.multiplier) if info["average"] is not None else None,
         status=status,
     )
+
+
+def normalize_common_order(info, ex_name) -> Order:
+    match ex_name:
+        case 'okex':
+            return normalize_okex_order(info)
+        case 'binance':
+            return normalize_binance_order(info)
+        case _:
+            raise ValueError(f"Unknown exchange: {ex_name}")
