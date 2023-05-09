@@ -197,7 +197,7 @@ def normalize_binance_ccxt_order(info) -> Order:
 def normalize_common_ccxt_order(info, ex_name) -> Order:
     match ex_name:
         case 'okex':
-            return normalize_okex_order(info)
+            return normalize_okex_order(info['info'])
         case 'binance':
             return normalize_binance_ccxt_order(info)
         case _:
