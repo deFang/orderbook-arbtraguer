@@ -132,12 +132,12 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
         items = []
         try:
             n = rc.blpop(get_order_status_key(
-                maker_order_id, 'okex'), timeout=0.2)
+                maker_order_id, signal.maker_exchange), timeout=0.05)
             if n:
                 items.append(n[1])
                 while True:
                     n = rc.lpop(get_order_status_key(
-                        maker_order_id, 'okex'), 10)
+                        maker_order_id, signal.maker_exchange), 10)
                     if n:
                         items.append(*n)
                     else:
