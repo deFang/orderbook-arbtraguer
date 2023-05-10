@@ -38,10 +38,11 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
     while True:
         start_at = now_s()
 
-        if ctx.is_canceled():
-            break
 
         for symbol in config.cross_arbitrage_symbol_datas:
+            if ctx.is_canceled():
+                break
+            
             for ex_name in exchanges.keys():
                 try:
                     res = {
@@ -114,6 +115,6 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                 except Exception as ex:
                     logging.exception(ex)
 
-            time.sleep(5)
+            sleep_with_context(ctx, 5)
 
         sleep_with_context(ctx, seconds=30 * 60 - now_s() + start_at)
