@@ -186,17 +186,18 @@ def process_binance_taskqueue_task(
             data = task_queue.get(block=True, timeout=1)
             parsed_data = json.loads(data)
             if parsed_data:
-                logging.info(f"-- parsed_data: {parsed_data}")
+                # logging.info(f"-- parsed_data: {parsed_data}")
                 if parsed_data.get("e", None) == "ORDER_TRADE_UPDATE":
                     order = normalize_binance_ws_order(parsed_data)
                     key = get_order_status_key(order.id, order.exchange)
+                    exchange_color = "cyan"
                     status_color = "blue"
                     if order.status == OrderStatus.canceled:
                         status_color = "yellow"
                     elif order.status == OrderStatus.filled:
                         status_color = "green"
                     logging.info(
-                        f"-- order status: {order.exchange} id={order.id} {order.symbol}  {order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
+                        f"-- order status: {color(exchange_color,order.exchange)} id={order.id} {order.symbol}  {order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
                     )
                     rc.rpush(key, order.json())
         except queue.Empty:
