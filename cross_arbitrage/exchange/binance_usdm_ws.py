@@ -105,12 +105,13 @@ class BinanceUsdsPublicWebSocketClient:
 
     def start_refresh_listen_key(self):
         # thread to refresh listen key
-        self.listen_key_thread = threading.Thread(
-            target=self.refresh_listen_key_loop,
-            kwargs={"ctx": self.ctx},
-            daemon=True,
-        )
-        self.listen_key_thread.start()
+        if self.is_private:
+            self.listen_key_thread = threading.Thread(
+                target=self.refresh_listen_key_loop,
+                kwargs={"ctx": self.ctx},
+                daemon=True,
+            )
+            self.listen_key_thread.start()
 
     def stop_refresh_listen_key(self):
         if self.listen_key_thread and self.listen_key_thread.is_alive():
@@ -287,9 +288,6 @@ class BinanceUsdsPublicWebSocketClient:
             return
         if self.client_ws is not None:
             logging.error(f"websocket client is not None")
-            return
-        if self.listen_key is None:
-            logging.error(f"websocket listen key is None")
             return
         self.client_ws = BinanceUsdsWebSocketApp(
             self.user_ws_url(),

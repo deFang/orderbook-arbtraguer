@@ -22,7 +22,8 @@ from cross_arbitrage.utils.symbol_mapping import symbol_mapping
 
 
 def start_okex_ws_task(cancel_ctx, symbols, task_queue, config: OrderConfig):
-    global ws
+    # global ws
+    ws = None
     try:
         ws = OkexPublicWebSocketClient(
             context_args={
@@ -62,7 +63,8 @@ def start_okex_ws_task(cancel_ctx, symbols, task_queue, config: OrderConfig):
 def start_binance_ws_task(
     cancel_ctx, symbols, task_queue, config: OrderConfig
 ):
-    global ws
+    # global ws
+    ws = None
     try:
         ws = BinanceUsdsPublicWebSocketClient(
             context_args={
@@ -233,7 +235,7 @@ def start_order_status_stream_mainloop(
                 daemon=True,
             )
         )
-    elif "binance" in exchanges:
+    if "binance" in exchanges:
         binance_ws_task_queue = queue.Queue(maxsize=0)
         thread_objects.append(
             threading.Thread(
