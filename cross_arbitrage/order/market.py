@@ -90,6 +90,9 @@ def place_order(exchange: ccxt.Exchange,
     if reduce_only:
         params['reduceOnly'] = True
 
+    if price is not None:
+        price *= exchange_symbol.multiplier
+
     # qty to market amount
     bag_size = get_bag_size(exchange, symbol)
     amount = qty / bag_size
