@@ -181,6 +181,7 @@ def process_binance_taskqueue_task(
     rc = Redis.from_url(
         config.redis.url, encoding="utf-8", decode_responses=True
     )
+    exchange_color = "cyan"
     while True:
         if cancel_ctx.is_canceled():
             break
@@ -192,14 +193,13 @@ def process_binance_taskqueue_task(
                 if parsed_data.get("e", None) == "ORDER_TRADE_UPDATE":
                     order = normalize_binance_ws_order(parsed_data)
                     key = get_order_status_key(order.id, order.exchange)
-                    exchange_color = "cyan"
                     status_color = "blue"
                     if order.status == OrderStatus.canceled:
                         status_color = "yellow"
                     elif order.status == OrderStatus.filled:
                         status_color = "green"
                     logging.info(
-                        f"-- order status: {color(exchange_color,order.exchange)} id={order.id} {order.symbol}  {order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
+                        f"-- order status: {color(exchange_color,order.exchange)} id={order.id} {order.symbol} {color(exchange_color,order.type) if order.type == OrderType.limit else order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
                     )
                     rc.rpush(key, order.json())
         except queue.Empty:
