@@ -87,6 +87,9 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
             if isinstance(e, ccxt.ExchangeError) and 'notional must be no smaller' in str(e):
                 logging.info('notional too small: {}'.format(e))
                 retry = 0
+            elif isinstance(e, ccxt.InvalidOrder):
+                logging.info('invalid order: {}'.format(e))
+                retry = 0
             else:
                 retry -= 1
 
