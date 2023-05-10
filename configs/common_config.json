@@ -464,6 +464,11 @@
         "multiplier": 1000
       },
       "ccxt": ["PEPE/USDT:USDT", "1000PEPE/USDT:USDT"]
+    },
+    "SUI/USDT": {
+      "okex": "SUI-USDT-SWAP",
+      "binance": "SUIUSDT",
+      "ccxt": "SUI/USDT:USDT"
     }
   },
   "network": {
