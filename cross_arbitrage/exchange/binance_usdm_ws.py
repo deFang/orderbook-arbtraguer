@@ -163,17 +163,13 @@ class BinanceUsdsPublicWebSocketClient:
             return False
 
     def refresh_listen_key_loop(self, ctx=None):
-        minutes = 1
-        self.refresh_listen_key()
-        sleep_with_context(self.ctx, minutes * 60)
-
+        minutes = 30
         while True:
             if ctx and ctx.is_canceled():
                 # print('exiting refresh listen key loop...')
                 self.remove_listen_key()
                 break
 
-            # 30 min
             self.refresh_listen_key()
             sleep_with_context(self.ctx, minutes * 60)
 
