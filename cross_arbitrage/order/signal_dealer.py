@@ -84,12 +84,16 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                                            client_id=maker_client_id)
             break
         except Exception as e:
-            retry -= 1
+            if isinstance(e, ccxt.ExchangeError) and 'notional must be no smaller' in str(e):
+                logging.info('notional too small: {}'.format(e))
+                retry = 0
+            else:
+                retry -= 1
 
-            logging.error(f'place maker order failed: {type(e)}')
-            logging.exception(e)
-
-            if not retry:
+                logging.error(f'place maker order failed: {type(e)}')
+                logging.exception(e)
+            
+            if retry <= 0:
                 rc.srem('order:signal:processing', lock_key)
 
                 stat = OrderDataModel(
