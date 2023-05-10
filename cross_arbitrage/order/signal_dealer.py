@@ -190,8 +190,11 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                     order = market_order(taker_exchange, symbol,
                                          signal.taker_side, need_order_qty,
                                          client_id=taker_client_id)
-                    followed_qty += Decimal(str(order['amount'])) * \
-                        taker_exchange_bag_size
+                    if order['amount'] is not None:
+                        followed_qty += Decimal(str(order['amount'])) * \
+                            taker_exchange_bag_size
+                    else:
+                        followed_qty += need_order_qty
                     new_trade = False
                 except Exception as e:
                     logging.error(f'place taker order failed: {type(e)}')
