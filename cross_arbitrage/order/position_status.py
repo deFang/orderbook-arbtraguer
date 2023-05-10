@@ -129,8 +129,9 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
         locked_list = res[:len(lock_keys)]
         if not all(locked_list):
             # revert locked keys
-            rc.srem('order:signal:processing', 
-                    *map(lambda x: x[0], filter(lambda x: x[1], zip(lock_keys, locked_list))))
+            if any(locked_list):
+                rc.srem('order:signal:processing', 
+                        *map(lambda x: x[0], filter(lambda x: x[1], zip(lock_keys, locked_list))))
         else:
             unprocessed_symbol_list.append(symbol)
 
