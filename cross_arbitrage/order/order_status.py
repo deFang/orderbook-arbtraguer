@@ -12,7 +12,7 @@ from cross_arbitrage.exchange.okex_ws import OkexPublicWebSocketClient
 from cross_arbitrage.fetch.utils.common import now_s
 from cross_arbitrage.order.config import OrderConfig
 from cross_arbitrage.order.globals import set_order_status_stream_is_ready
-from cross_arbitrage.order.model import (OrderStatus,
+from cross_arbitrage.order.model import (OrderStatus, OrderType,
                                          normalize_binance_ws_order,
                                          normalize_okex_order)
 from cross_arbitrage.utils.color import color
@@ -144,6 +144,8 @@ def process_okex_taskqueue_task(
     rc = Redis.from_url(
         config.redis.url, encoding="utf-8", decode_responses=True
     )
+
+    exchange_color = "cyan"
     while True:
         if cancel_ctx.is_canceled():
             break
@@ -166,7 +168,7 @@ def process_okex_taskqueue_task(
                         elif order.status == OrderStatus.filled:
                             status_color = "green"
                         logging.info(
-                            f"-- order status: {order.exchange} id={order.id} {order.symbol}  {order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
+                            f"-- order status: {color(exchange_color,order.exchange)} id={order.id} {order.symbol} {color(exchange_color,order.type) if order.type == OrderType.limit else order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
                         )
                         rc.rpush(key, order.json())
         except queue.Empty:

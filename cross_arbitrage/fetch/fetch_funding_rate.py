@@ -41,8 +41,8 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
         if ctx.is_canceled():
             break
 
-        for ex_name in exchanges.keys():
-            for symbol in config.cross_arbitrage_symbol_datas:
+        for symbol in config.cross_arbitrage_symbol_datas:
+            for ex_name in exchanges.keys():
                 try:
                     res = {
                         "exchange": ex_name,
@@ -95,9 +95,15 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                             == res["funding_timestamp"]
                         ):
                             res["delta"] = previous_funding_info["delta"]
-                    logging.info(
-                        f"{ex_name} {symbol} funding_info={res} previous_funding_info={previous_funding_info}"
-                    )
+                    # print
+                    if previous_funding_info and res['funding_timestamp'] == previous_funding_info['funding_timestamp']:
+                        logging.info(
+                            f"{ex_name} {symbol} funding_info={res}"
+                        )
+                    else:
+                        logging.info(
+                            f"{ex_name} {symbol} funding_info={res} previous_funding_info={previous_funding_info}"
+                        )
                     rc.set(
                         get_funding_rate_key(
                             ex_name, symbol
@@ -108,6 +114,6 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                 except Exception as ex:
                     logging.exception(ex)
 
-                time.sleep(5)
+            time.sleep(5)
 
         sleep_with_context(ctx, seconds=30 * 60 - now_s() + start_at)
