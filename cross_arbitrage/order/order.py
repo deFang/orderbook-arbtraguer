@@ -134,7 +134,7 @@ def order_loop(ctx: CancelContext, config: OrderConfig, thresholds: dict[str, Th
         if not get_order_status_stream_is_ready():
             continue
 
-        for symbol, signal in signals.items():
+        for (symbol, maker_exchange), signal in signals.items():
             if config.debug:
                 if ob_count == 0:
                     st = time.time()

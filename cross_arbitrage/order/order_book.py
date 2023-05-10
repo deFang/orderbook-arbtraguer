@@ -123,7 +123,7 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     qty = min(qty, position_qty)
                     if maker_symbol_position and maker_symbol_position.direction == PositionDirection.long:
                         is_reduce_position = True
-                ret[symbol] = OrderSignal(
+                ret[(symbol, maker_exchange)] = OrderSignal(
                     symbol=symbol,
                     maker_side='sell',
                     maker_exchange=maker_exchange,
@@ -145,7 +145,7 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     qty = min(qty, position_qty)
                     if maker_symbol_position and maker_symbol_position.direction == PositionDirection.short:
                         is_reduce_position = True
-                ret[symbol] = OrderSignal(
+                ret[(symbol, maker_exchange)] = OrderSignal(
                     symbol=symbol,
                     maker_side='buy',
                     maker_exchange=maker_exchange,
