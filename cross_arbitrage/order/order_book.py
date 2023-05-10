@@ -3,6 +3,7 @@ from decimal import Decimal
 import logging
 from typing import Dict, NamedTuple, Optional
 import ccxt
+import numpy as np
 
 import orjson
 import redis
@@ -30,7 +31,9 @@ class OrderSignal(NamedTuple):
     maker_position: Optional[PositionStatus]
     is_reduce_position: bool = False
 
+
 _cache = ExpireCache(1)
+
 
 def get_position(rc: redis.Redis, exchange_name: str, symbol: str):
     key = (exchange_name, symbol)
@@ -67,7 +70,7 @@ def fetch_orderbooks_from_redis(ctx: CancelContext,
     return ret
 
 
-def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], 
+def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange],
                                config: OrderConfig, thresholds: dict[str, Threshold], orderbooks: list) -> Dict[str, OrderSignal]:
     """
     return: {symbol: `OrderSignal`}
@@ -87,9 +90,11 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
 
         for symbol_config in config.get_symbol_datas(symbol):
             maker_exchange = symbol_config.makeonly_exchange_name
-            taker_exchange = (set(config.exchange_pair_names) - {maker_exchange}).pop()
+            taker_exchange = (
+                set(config.exchange_pair_names) - {maker_exchange}).pop()
 
-            threshold = thresholds[maker_exchange].get_symbol_thresholds(symbol)
+            threshold = thresholds[maker_exchange].get_symbol_thresholds(
+                symbol)
 
             maker_ob = ob[maker_exchange]
             taker_ob = ob[taker_exchange]
@@ -118,34 +123,34 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
             # if maker exchange price if higher
             if float(maker_ob['asks'][0][0]) > float(taker_ob['asks'][0][0]) * float(1 + high_delta):
                 bag_size = get_bag_size_by_ex_name(taker_exchange, symbol)
-                qty = Decimal(taker_ob['asks'][0][1]) * bag_size
-                if position_qty is not None:
+                qty = Decimal(
+                    str(np.average(np.array(taker_ob['asks'], dtype=np.float64)[:5, 1]))) * bag_size
+                if position_qty is not None and maker_symbol_position.direction == PositionDirection.long:
                     qty = min(qty, position_qty)
-                    if maker_symbol_position and maker_symbol_position.direction == PositionDirection.long:
-                        is_reduce_position = True
-                ret[(symbol, maker_exchange)] = OrderSignal(
+                    is_reduce_position = True
+                ret[symbol] = OrderSignal(
                     symbol=symbol,
                     maker_side='sell',
                     maker_exchange=maker_exchange,
                     maker_price=Decimal(maker_ob['asks'][0][0]),
-                    maker_qty= qty,
+                    maker_qty=qty,
                     taker_side='buy',
                     taker_exchange=taker_exchange,
                     taker_price=Decimal(taker_ob['asks'][0][0]),
                     orderbook_ts=maker_ob['ts'],
                     cancel_order_threshold=float(high_cancel_threshold),
                     maker_position=maker_symbol_position,
-                    is_reduce_position = is_reduce_position,
+                    is_reduce_position=is_reduce_position,
                 )
             # else if maker exchange price if lower
             elif float(maker_ob['bids'][0][0]) < float(taker_ob['bids'][0][0]) * float(1 + low_delta):
                 bag_size = get_bag_size_by_ex_name(taker_exchange, symbol)
-                qty = Decimal(taker_ob['bids'][0][1]) * bag_size
-                if position_qty is not None:
+                qty = Decimal(
+                    str(np.average(np.array(taker_ob['bids'], dtype=np.float64)[:5, 1]))) * bag_size
+                if position_qty is not None and maker_symbol_position.direction == PositionDirection.short:
                     qty = min(qty, position_qty)
-                    if maker_symbol_position and maker_symbol_position.direction == PositionDirection.short:
-                        is_reduce_position = True
-                ret[(symbol, maker_exchange)] = OrderSignal(
+                    is_reduce_position = True
+                ret[symbol] = OrderSignal(
                     symbol=symbol,
                     maker_side='buy',
                     maker_exchange=maker_exchange,
@@ -157,6 +162,6 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     orderbook_ts=maker_ob['ts'],
                     cancel_order_threshold=float(low_cancel_threshold),
                     maker_position=maker_symbol_position,
-                    is_reduce_position = is_reduce_position,
+                    is_reduce_position=is_reduce_position,
                 )
     return ret
