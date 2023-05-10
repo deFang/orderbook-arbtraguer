@@ -99,12 +99,12 @@ class Threshold:
             try:
                 self.refresh_thresholds()
             except Exception as e:
-                logging.error('refresh_thresholds error: {}'.format(e))
+                logging.error('[mo_ex: {}] refresh_thresholds error: {}'.format(self.makeonly_exchange, e))
                 logging.exception(e)
 
             if self.config.debug:
                 if count % 300 == 0:
-                    logging.info('thresholds: {}'.format(pprint.pformat(self.symbol_thresholds)))
+                    logging.info('[mo_ex: {}] thresholds: {}'.format(self.makeonly_exchange, pprint.pformat(self.symbol_thresholds)))
                 count += 1
             sleep_time = interval - (time.time() - start_time)
             sleep_with_context(ctx, sleep_time)
