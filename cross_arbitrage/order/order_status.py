@@ -120,6 +120,7 @@ def start_exchange_wsclient(ws, ex_name):
     retries = 30
     while retries > 0:
         if ws.get_status() == "CONNECTED":
+            logging.info(f"order status wsclient of {ex_name} is connected")
             break
 
         time.sleep(1)
