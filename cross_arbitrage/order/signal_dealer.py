@@ -45,7 +45,16 @@ class OrderDataModel(CSVModel):
 
 
 def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exchanges: Dict[str, ccxt.Exchange], rc: redis.Redis):
+    try:
+        _deal_loop_impl(ctx, config, signal, exchanges, rc)
+    except Exception as e:
+        # remove lock
+        rc.srem('order:signal:processing', signal.symbol)
+        logging.error(f"deal_loop error: {e}")
+        logging.exception(e)
 
+
+def _deal_loop_impl(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exchanges: Dict[str, ccxt.Exchange], rc: redis.Redis):
     symbol = signal.symbol
     maker_exchange: ccxt.okex = exchanges[signal.maker_exchange]
     taker_exchange: ccxt.binance = exchanges[signal.taker_exchange]
