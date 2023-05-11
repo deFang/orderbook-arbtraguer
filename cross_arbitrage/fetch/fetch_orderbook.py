@@ -67,16 +67,11 @@ def start_okex_ws_task(
             break
 
         # check last_rev_timestamp and restart ws client
-        if int(time.time()) - ws.last_rev_timestamp > 30:
-            if ws.client_ws:
-                ws.client_ws.send_ping()
-                time.sleep(10)
-
-            if int(time.time()) - ws.last_rev_timestamp > 20:
-                ws.stop_client()
-                time.sleep(2)
-                start_exchange_wsclient(ws, "okex", config_symbols)
-
+        # if now_s() - ws.last_rev_timestamp > 32:
+        if ws.client_ws and ws.get_status() in ["DISCONNECTED"]:
+            ws.stop_client()
+            time.sleep(2)
+            start_exchange_wsclient(ws, "okex", config_symbols)
         time.sleep(5)
 
 
@@ -103,8 +98,7 @@ def start_binance_ws_task(
             ws.stop_client()
             break
 
-        # check last_rev_timestamp and restart ws client
-        if int(time.time()) - ws.last_rev_timestamp > 60:
+        if ws.client_ws and ws.get_status() in ["DISCONNECTED"]:
             ws.stop_client()
             time.sleep(2)
             start_exchange_wsclient(ws, "binance", config_symbols)
