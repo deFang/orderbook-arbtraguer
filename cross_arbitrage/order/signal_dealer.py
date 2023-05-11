@@ -156,7 +156,7 @@ def _deal_loop_impl(ctx: CancelContext, config: OrderConfig, signal: OrderSignal
                     n = rc.lpop(get_order_status_key(
                         maker_order_id, signal.maker_exchange), 10)
                     if n:
-                        items.append(*n)
+                        items.extend(n)
                     else:
                         break
         except redis.RedisError as e:
