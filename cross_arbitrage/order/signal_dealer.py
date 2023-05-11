@@ -260,6 +260,9 @@ def _deal_loop_impl(ctx: CancelContext, config: OrderConfig, signal: OrderSignal
                             if isinstance(e, ccxt.errors.InsufficientFunds):
                                 logging.info(f"insufficent margin when fix order qty: {e}")
                                 retry = 0
+                            elif isinstance(e, ccxt.ExchangeError) and 'notional must be no smaller' in str(e):
+                                logging.info('[taker fix order] notional too small: {}'.format(e))
+                                retry = 0
                             else:
                                 logging.error(
                                     f'place taker order failed: {type(e)}')
