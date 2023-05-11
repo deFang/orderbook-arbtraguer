@@ -197,8 +197,12 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
                         followed_qty += need_order_qty
                     new_trade = False
                 except Exception as e:
-                    logging.error(f'place taker order failed: {type(e)}')
-                    logging.exception(e)
+                    if isinstance(e, ccxt.ExchangeError) and 'notional must be no smaller' in str(e):
+                        logging.info('[taker order] notional too small: {}'.format(e))
+                        new_trade = False
+                    else:
+                        logging.error(f'place taker order failed: {type(e)}')
+                        logging.exception(e)
 
         if is_canceled_or_filled or is_canceled_by_program:
             _clear = True
