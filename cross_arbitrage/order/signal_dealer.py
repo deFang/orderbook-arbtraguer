@@ -49,7 +49,8 @@ def deal_loop(ctx: CancelContext, config: OrderConfig, signal: OrderSignal, exch
         _deal_loop_impl(ctx, config, signal, exchanges, rc)
     except Exception as e:
         # remove lock
-        rc.srem('order:signal:processing', signal.symbol)
+        lock_key = f'{signal.maker_exchange}:{signal.symbol}'
+        rc.srem('order:signal:processing', lock_key)
         logging.error(f"deal_loop error: {e}")
         logging.exception(e)
 
