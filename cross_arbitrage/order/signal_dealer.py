@@ -257,10 +257,14 @@ def _deal_loop_impl(ctx: CancelContext, config: OrderConfig, signal: OrderSignal
                                                     client_id=taker_client_id)
                             retry = 0
                         except Exception as e:
-                            logging.error(
-                                f'place taker order failed: {type(e)}')
-                            logging.exception(e)
-                            retry -= 1
+                            if isinstance(e, ccxt.errors.InsufficientFunds):
+                                logging.info(f"insufficent margin when fix order qty: {e}")
+                                retry = 0
+                            else:
+                                logging.error(
+                                    f'place taker order failed: {type(e)}')
+                                logging.exception(e)
+                                retry -= 1
             elif maker_filled_qty < followed_qty:
                 logging.warn(
                     f"order qty is not match: {symbol} maker qty {maker_filled_qty}, taker qty {followed_qty}")
