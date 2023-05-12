@@ -71,6 +71,8 @@ class OrderConfig(BaseModel):
         symbol_datas = []
         if values.get("cross_arbitrage_symbol_datas"):
             symbol_datas = values["cross_arbitrage_symbol_datas"]
+        exchange_names = values["exchange_pair_names"]
+        symbol_datas_for_both_config = []
         if len(symbol_datas) > 0:
             for symbol in symbol_datas:
                 if not symbol.makeonly_exchange_name:
@@ -123,6 +125,12 @@ class OrderConfig(BaseModel):
                         )
                     if not threshold_data.cancel_position_timeout:
                         threshold_data.cancel_position_timeout = values["default_cancel_position_timeout"]
+
+                if symbol.makeonly_exchange_name == "[both]":
+                    symbol.makeonly_exchange_name = exchange_names[0]
+                    symbol_clone = symbol.copy(update={"makeonly_exchange_name": exchange_names[1]})
+                    symbol_datas_for_both_config.append(symbol_clone)
+        values["cross_arbitrage_symbol_datas"].extend(symbol_datas_for_both_config)
         return values
 
     def get_symbol_datas(self, symbol_name:str):
