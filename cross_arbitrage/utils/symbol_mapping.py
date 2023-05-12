@@ -59,6 +59,8 @@ def get_ccxt_symbol(common_symbol: str) -> str:
             f"mapping of 'ccxt' symbol not found for '{common_symbol}'"
         )
 
+def get_ccxt_symbols():
+    return list(_ccxt2common.keys())
 
 def get_exchange_symbol(common_symbol: str, exchange_name: str) -> ExchangeSymbol:
     try:

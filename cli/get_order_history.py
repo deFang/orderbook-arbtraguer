@@ -19,7 +19,7 @@ from cross_arbitrage.utils.decorator import paged_since, retry
 from cross_arbitrage.utils.exchange import get_bag_size
 from cross_arbitrage.utils.logger import init_logger
 from cross_arbitrage.utils.symbol_mapping import (
-    get_ccxt_symbol, get_common_symbol_from_exchange_symbol,
+    get_ccxt_symbol, get_ccxt_symbols, get_common_symbol_from_exchange_symbol,
     get_exchange_symbol, get_exchange_symbol_from_exchange,
     init_symbol_mapping_from_file)
 
@@ -150,7 +150,7 @@ def sync_symbols_orders(exchange, symbols, since, until, dir="data"):
         f.write(json.dumps(orders_raw))
 
 
-def gen_order_csv(exchange, env):
+def gen_order_csv(exchange, symbols, env):
     json_name = f"{DATA_DIR}/{exchange.ex_name}_raw.json"
     with open(json_name, "r") as f:
         orders_raw = json.load(f)
@@ -169,38 +169,39 @@ def gen_order_csv(exchange, env):
                 common_symbol = get_common_symbol_from_exchange_symbol(
                     o["instId"], exchange.ex_name
                 )
-                bag_size = get_bag_size(exchange, common_symbol)
-                res.append(
-                    {
-                        "id": o["ordId"],
-                        "clientOrderId": o["clOrdId"],
-                        "symbol": common_symbol,
-                        "timestamp": int(o["cTime"]),
-                        "updateTimestamp": int(o["uTime"]),
-                        "datetime": datetime.fromtimestamp(
-                            int(o["cTime"]) / 1000
-                        )
-                        .astimezone(timezone.utc)
-                        .strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                        "type": o["ordType"],
-                        "side": o["side"].upper(),
-                        "price": o["px"],
-                        "avgPrice": o["avgPx"],
-                        "origQty": str(Decimal(str(o["sz"])) * bag_size),
-                        "executedQty": str(
-                            Decimal(str(o["accFillSz"])) * bag_size
-                        ),
-                        "cost": str(
-                            Decimal(o["accFillSz"])
-                            * Decimal(o["fillPx"])
-                            * bag_size
-                        ),
-                        "status": o["state"],
-                        "reduceOnly": o["reduceOnly"],
-                        "leverage": o["lever"],
-                        "fee": o["fee"],
-                    }
-                )
+                if common_symbol in symbols:
+                    bag_size = get_bag_size(exchange, common_symbol)
+                    res.append(
+                        {
+                            "id": o["ordId"],
+                            "clientOrderId": o["clOrdId"],
+                            "symbol": common_symbol,
+                            "timestamp": int(o["cTime"]),
+                            "updateTimestamp": int(o["uTime"]),
+                            "datetime": datetime.fromtimestamp(
+                                int(o["cTime"]) / 1000
+                            )
+                            .astimezone(timezone.utc)
+                            .strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                            "type": o["ordType"],
+                            "side": o["side"].upper(),
+                            "price": o["px"],
+                            "avgPrice": o["avgPx"],
+                            "origQty": str(Decimal(str(o["sz"])) * bag_size),
+                            "executedQty": str(
+                                Decimal(str(o["accFillSz"])) * bag_size
+                            ),
+                            "cost": str(
+                                Decimal(o["accFillSz"])
+                                * Decimal(o["fillPx"])
+                                * bag_size
+                            ),
+                            "status": o["state"],
+                            "reduceOnly": o["reduceOnly"],
+                            "leverage": o["lever"],
+                            "fee": o["fee"],
+                        }
+                    )
 
             save_dictlist_to_csv(
                 f"{DATA_DIR}/{env}_{exchange.ex_name}_orders_{date_now_str()}.csv",
@@ -372,8 +373,9 @@ def analysis_orders(env):
     print(df5)
 
 
-def gen_funding_csv(exchange, since, env):
+def gen_funding_csv(exchange, ccxt_symbols, since, env):
     res = exchange.fetch_funding_history(since=since)
+    res  = [r for r in res if r['symbol'] in ccxt_symbols]
     save_dictlist_to_csv(
         f"{DATA_DIR}/{env}_{exchange.ex_name}_funding_{date_now_str()}.csv",
         headers=[
@@ -420,12 +422,14 @@ def main(env: str, since: str):
     symbols = [
         symbol.symbol_name for symbol in config.cross_arbitrage_symbol_datas
     ]
+
+    ccxt_symbols = get_ccxt_symbols()
+
     print(symbols)
     since = int(since)
     until = now_ms()
 
     d = config.exchanges["okex"]
-    print(d)
     okex_option = {
         "apiKey": d.api_key,
         "secret": d.secret,
@@ -448,11 +452,11 @@ def main(env: str, since: str):
     )
     sync_symbols_orders(okex, symbols, since=since, until=until, dir=DATA_DIR)
 
-    gen_order_csv(okex, env=env)
-    gen_order_csv(binance, env=env)
+    gen_order_csv(okex, symbols, env=env)
+    gen_order_csv(binance, symbols, env=env)
 
-    gen_funding_csv(okex, since, env=env)
-    gen_funding_csv(binance, since, env=env)
+    gen_funding_csv(okex, ccxt_symbols, since, env=env)
+    gen_funding_csv(binance, ccxt_symbols, since, env=env)
 
     # analysis_orders(env)
 

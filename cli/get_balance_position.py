@@ -9,7 +9,7 @@ from cross_arbitrage.order.config import get_config
 from cross_arbitrage.order.globals import init_globals
 from cross_arbitrage.utils.exchange import get_bag_size
 from cross_arbitrage.utils.logger import init_logger
-from cross_arbitrage.utils.symbol_mapping import get_common_symbol_from_exchange_symbol, init_symbol_mapping_from_file
+from cross_arbitrage.utils.symbol_mapping import SymbolMappingNotFoundError, get_common_symbol_from_exchange_symbol, init_symbol_mapping_from_file
 
 def print_balance(exchange):
     balance1 = exchange.fetch_balance()
@@ -44,8 +44,12 @@ def print_positions(exchange):
     positions = [p for p in positions if p['contracts'] > 0]
     for p in positions:
         exchange_symbol = p['info']['symbol'] if p['info'].get('symbol') else p['info']['instId']
-        common_symbol = get_common_symbol_from_exchange_symbol(exchange_symbol, exchange.ex_name)
-        bag_size = get_bag_size(exchange, common_symbol)
+        try:
+            common_symbol = get_common_symbol_from_exchange_symbol(exchange_symbol, exchange.ex_name)
+            bag_size = get_bag_size(exchange, common_symbol)
+        except SymbolMappingNotFoundError:
+            common_symbol = exchange_symbol
+            bag_size = Decimal(1)
         p['symbol'] = common_symbol
         p['_amount'] = float(Decimal(str(p['contracts'])) * bag_size)
         p['_avg_price'] = float(Decimal(str(p['entryPrice'])) * Decimal(str(p['contractSize'])) / bag_size)
