@@ -180,7 +180,7 @@ def order_loop(ctx: CancelContext, config: OrderConfig, thresholds: dict[str, Th
                     symbol_config = config.get_symbol_data_by_makeonly(
                         signal.symbol, signal.maker_exchange)
                     notional = pos.avg_price * pos.qty
-                    if notional > symbol_config.max_notional_per_symbol:
+                    if notional > Decimal(symbol_config.max_notional_per_symbol):
                         logging.info('[maker_exchange: {}] [{}] position notional value {} is greater than max_notional_per_symbol {}'.format(
                             signal.maker_exchange, signal.symbol, pos.avg_price * pos.qty, symbol_config.max_notional_per_symbol))
                         continue
