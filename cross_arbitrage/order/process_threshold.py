@@ -78,51 +78,55 @@ def process_threshold_okex_maker_binance_taker(ctx: CancelContext, config: Order
                     long.increase_position_threshold = (
                         long.increase_position_threshold - delta
                     )
-                    long.cancel_increase_position_threshold = (
-                        long.decrease_position_threshold
-                        + (
-                            long.increase_position_threshold
-                            - long.decrease_position_threshold
-                        )
-                        * Decimal(
-                            config.default_cancel_increase_position_ratio
-                        )
-                    )
-                    long.cancel_decrease_position_threshold = (
-                        long.decrease_position_threshold
-                        + (
-                            long.increase_position_threshold
-                            - long.decrease_position_threshold
-                        )
-                        * Decimal(
-                            config.default_cancel_decrease_position_ratio
-                        )
-                    )
+                    long.cancel_increase_position_threshold -= delta
+                    
+                    # long.cancel_increase_position_threshold = (
+                    #     long.decrease_position_threshold
+                    #     + (
+                    #         long.increase_position_threshold
+                    #         - long.decrease_position_threshold
+                    #     )
+                    #     * Decimal(
+                    #         config.default_cancel_increase_position_ratio
+                    #     )
+                    # )
+                    # long.cancel_decrease_position_threshold = (
+                    #     long.decrease_position_threshold
+                    #     + (
+                    #         long.increase_position_threshold
+                    #         - long.decrease_position_threshold
+                    #     )
+                    #     * Decimal(
+                    #         config.default_cancel_decrease_position_ratio
+                    #     )
+                    # )
                 elif delta < 0:
                     short = res.short_threshold
                     short.increase_position_threshold = (
                         short.increase_position_threshold - delta
                     )
-                    short.cancel_increase_position_threshold = (
-                        short.decrease_position_threshold
-                        + (
-                            short.increase_position_threshold
-                            - short.decrease_position_threshold
-                        )
-                        * Decimal(
-                            config.default_cancel_increase_position_ratio
-                        )
-                    )
-                    short.cancel_decrease_position_threshold = (
-                        short.decrease_position_threshold
-                        + (
-                            short.increase_position_threshold
-                            - short.decrease_position_threshold
-                        )
-                        * Decimal(
-                            config.default_cancel_decrease_position_ratio
-                        )
-                    )
+                    short.cancel_increase_position_threshold -= delta
+
+                    # short.cancel_increase_position_threshold = (
+                    #     short.decrease_position_threshold
+                    #     + (
+                    #         short.increase_position_threshold
+                    #         - short.decrease_position_threshold
+                    #     )
+                    #     * Decimal(
+                    #         config.default_cancel_increase_position_ratio
+                    #     )
+                    # )
+                    # short.cancel_decrease_position_threshold = (
+                    #     short.decrease_position_threshold
+                    #     + (
+                    #         short.increase_position_threshold
+                    #         - short.decrease_position_threshold
+                    #     )
+                    #     * Decimal(
+                    #         config.default_cancel_decrease_position_ratio
+                    #     )
+                    # )
         return res
     except Exception as ex:
         logging.error(f"process_threshold_okex_maker error: {ex}")
@@ -192,51 +196,55 @@ def process_threshold_binance_maker_okex_taker(ctx: CancelContext, config: Order
                     long.increase_position_threshold = (
                         long.increase_position_threshold + delta
                     )
-                    long.cancel_increase_position_threshold = (
-                        long.decrease_position_threshold
-                        + (
-                            long.increase_position_threshold
-                            - long.decrease_position_threshold
-                        )
-                        * Decimal(
-                            config.default_cancel_increase_position_ratio
-                        )
-                    )
-                    long.cancel_decrease_position_threshold = (
-                        long.decrease_position_threshold
-                        + (
-                            long.increase_position_threshold
-                            - long.decrease_position_threshold
-                        )
-                        * Decimal(
-                            config.default_cancel_decrease_position_ratio
-                        )
-                    )
+                    long.cancel_increase_position_threshold += delta
+
+                    # long.cancel_increase_position_threshold = (
+                    #     long.decrease_position_threshold
+                    #     + (
+                    #         long.increase_position_threshold
+                    #         - long.decrease_position_threshold
+                    #     )
+                    #     * Decimal(
+                    #         config.default_cancel_increase_position_ratio
+                    #     )
+                    # )
+                    # long.cancel_decrease_position_threshold = (
+                    #     long.decrease_position_threshold
+                    #     + (
+                    #         long.increase_position_threshold
+                    #         - long.decrease_position_threshold
+                    #     )
+                    #     * Decimal(
+                    #         config.default_cancel_decrease_position_ratio
+                    #     )
+                    # )
                 elif delta > 0:
                     short = res.short_threshold
                     short.increase_position_threshold = (
                         short.increase_position_threshold + delta
                     )
-                    short.cancel_increase_position_threshold = (
-                        short.decrease_position_threshold
-                        + (
-                            short.increase_position_threshold
-                            - short.decrease_position_threshold
-                        )
-                        * Decimal(
-                            config.default_cancel_increase_position_ratio
-                        )
-                    )
-                    short.cancel_decrease_position_threshold = (
-                        short.decrease_position_threshold
-                        + (
-                            short.increase_position_threshold
-                            - short.decrease_position_threshold
-                        )
-                        * Decimal(
-                            config.default_cancel_decrease_position_ratio
-                        )
-                    )
+                    short.cancel_increase_position_threshold += delta
+
+                    # short.cancel_increase_position_threshold = (
+                    #     short.decrease_position_threshold
+                    #     + (
+                    #         short.increase_position_threshold
+                    #         - short.decrease_position_threshold
+                    #     )
+                    #     * Decimal(
+                    #         config.default_cancel_increase_position_ratio
+                    #     )
+                    # )
+                    # short.cancel_decrease_position_threshold = (
+                    #     short.decrease_position_threshold
+                    #     + (
+                    #         short.increase_position_threshold
+                    #         - short.decrease_position_threshold
+                    #     )
+                    #     * Decimal(
+                    #         config.default_cancel_decrease_position_ratio
+                    #     )
+                    # )
         return res
     except Exception as ex:
         logging.error(f"process_threshold_okex_maker error: {ex}")
