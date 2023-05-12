@@ -48,22 +48,28 @@ def test_normalize_order_qty(config):
 
 
 def test_align_qty(config):
-    symbol = "APE/USDT"
-
     init_symbol_mapping_from_file(
         join(get_project_root(), "tests/fixtures/symbols.json")
     )
 
-    # okex = create_exchange(config.exchanges['okex'])
+    okex = create_exchange(config.exchanges['okex'])
+    okex.load_markets()
+
     binance = create_exchange(config.exchanges["binance"])
     binance.load_markets()
 
     # okex_amount = normalize_order_qty(okex, symbol, qty)
-    binance_amount = align_qty(binance, symbol, Decimal("12.7"))
-
+    binance_amount = align_qty(binance, "APE/USDT", Decimal("12.7"))
     assert str(binance_amount[0]) == "12"
     bnb_amount = align_qty(binance, "BNB/USDT", Decimal("0.31"))
     assert bnb_amount[0] == Decimal("0.31")
+
+    # bug for PEPE in OKEX
+    pepe_amount = align_qty(okex, "PEPE/USDT", Decimal("29660000"))
+    assert pepe_amount[0] == Decimal("20000000")
+
+    ape_amount = align_qty(okex, "APE/USDT", Decimal("11.39"))
+    assert ape_amount[0] == Decimal("11.3")
 
 
 def test_normalize_exchange_order_qty(config):
