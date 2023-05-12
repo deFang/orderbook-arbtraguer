@@ -9,7 +9,7 @@ from typing import Dict, List
 import ccxt
 from cross_arbitrage.order.globals import get_order_status_stream_is_ready
 from cross_arbitrage.order.order_status import start_order_status_stream_mainloop
-from cross_arbitrage.order.position_status import align_position_loop, refresh_position_loop
+from cross_arbitrage.order.position_status import PositionDirection, align_position_loop, refresh_position_loop
 import redis
 from cross_arbitrage.order.process_threshold import process_threshold_mainloop
 
@@ -172,6 +172,18 @@ def order_loop(ctx: CancelContext, config: OrderConfig, thresholds: dict[str, Th
                         logging.info(
                             f"order_qty is 0, skip place order for {signal.symbol} {signal.maker_exchange} {signal.maker_side} {signal.maker_price}")
                     continue
+
+                # check position notional value
+                pos = signal.maker_position
+                if (pos and pos.avg_price and
+                        signal.maker_side == pos.direction.buy_or_sell()):
+                    symbol_config = config.get_symbol_data_by_makeonly(
+                        signal.symbol, signal.maker_exchange)
+                    notional = pos.avg_price * pos.qty
+                    if notional > symbol_config.max_notional_per_symbol:
+                        logging.info('[maker_exchange: {}] [{}] position notional value {} is greater than max_notional_per_symbol {}'.format(
+                            signal.maker_exchange, signal.symbol, pos.avg_price * pos.qty, symbol_config.max_notional_per_symbol))
+                        continue
 
                 # add symbol to processing
                 rc.sadd('order:signal:processing', lock_key)

@@ -21,6 +21,9 @@ class PositionDirection(str, Enum):
     long = "long"
     short = "short"
 
+    def buy_or_sell(self):
+        return "buy" if self == PositionDirection.long else "sell"
+
 
 class PositionStatus(pydantic.BaseModel):
     direction: PositionDirection
