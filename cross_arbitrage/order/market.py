@@ -142,7 +142,6 @@ def align_qty(exchange: ccxt.Exchange, symbol: str, qty: Decimal) -> Tuple[Decim
     match exchange:
         case ccxt.okex():
             bag_size = get_bag_size(exchange, symbol)
-            print('bag_size',bag_size)
             # r1 = qty.quantize(bag_size)
             r2 = qty % bag_size
             r1 = qty - r2
