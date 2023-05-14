@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Dict
 from decimal import Decimal
@@ -29,6 +30,18 @@ def create_exchange(params: AccountConfig, proxy: dict = None) -> ccxt.Exchange:
             return ccxt.okex(c)
         case _ as x:
             raise Exception(f'unknown exchange: {x}')
+
+def get_symbol_min_amount_by_exchange(exchange: ccxt.Exchange, symbol:str) -> Decimal:
+    exchange.load_markets()
+    exchange_symbol = get_exchange_symbol_from_exchange(exchange, symbol)
+    symbol_info = exchange.market(exchange_symbol.name)
+    match exchange:
+        case ccxt.okex():
+            return Decimal(str(symbol_info['contractSize'])) * exchange_symbol.multiplier
+        case ccxt.binanceusdm():
+            return Decimal(str(10**(-symbol_info['precision']['amount']))) * exchange_symbol.multiplier
+        case _:
+            raise Exception(f"unsupport exchange: {exchange.name}")
 
 def get_symbol_min_amount(exchanges: Dict[str, ccxt.Exchange], symbol:str):
     ret = {}

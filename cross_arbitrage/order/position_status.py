@@ -9,7 +9,7 @@ from cross_arbitrage.config.symbol import SymbolConfig
 from cross_arbitrage.order.config import OrderConfig
 from cross_arbitrage.order.market import market_order
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
-from cross_arbitrage.utils.exchange import get_bag_size, get_symbol_min_amount
+from cross_arbitrage.utils.exchange import get_bag_size, get_symbol_min_amount, get_symbol_min_amount_by_exchange
 from cross_arbitrage.utils.symbol_mapping import get_ccxt_symbol, get_common_symbol_from_ccxt, get_exchange_symbol_from_exchange
 import orjson
 import redis
@@ -218,20 +218,27 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                              reduce_only=True)
             else:
                 # abs(delta) < min_qty
-                if delta > 0:
-                    exchange = exchanges[positions[0][0]]
-                    pos: PositionStatus = positions[0][1]
-                    side = 'sell' if pos.direction == PositionDirection.long else 'buy'
+                exchange = exchanges[positions[0][0]]
+                pos: PositionStatus = positions[0][1]
+                min_qty_by_exchange = get_symbol_min_amount_by_exchange(exchange, symbol)
+                if abs(min_qty_by_exchange) < abs(delta):
+                    if delta > 0:
+                        side = 'sell' if pos.direction == PositionDirection.long else 'buy'
+                    else:
+                        side = 'buy' if pos.direction == PositionDirection.long else 'sell'
                     market_order(exchange, symbol,
-                                 side, delta,
+                                 side, abs(delta),
                                  client_id=f"{order_prefix}T{int(time.time() * 1000)}",
                                  reduce_only=True)
                 else:
                     exchange = exchanges[positions[1][0]]
                     pos: PositionStatus = positions[1][1]
-                    side = 'sell' if pos.direction == PositionDirection.long else 'buy'
+                    if delta > 0:
+                        side = 'buy' if pos.direction == PositionDirection.long else 'sell'
+                    else:
+                        side = 'sell' if pos.direction == PositionDirection.long else 'buy'
                     market_order(exchange, symbol,
-                                 side, -delta,
+                                 side, abs(delta),
                                  client_id=f"{order_prefix}T{int(time.time() * 1000)}",
                                  reduce_only=True)
 
