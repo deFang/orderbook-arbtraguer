@@ -183,8 +183,10 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
 
             symbol_info: SymbolConfig = config.get_symbol_datas(symbol)[0]
 
-            if abs(delta) >= min_qty:
-                logging.info(f"align position: {symbol} {positions}")
+            if abs(delta) == Decimal(0):
+                continue
+            else:
+                logging.info(f"align position: {symbol} {positions} {delta}")
 
             if delta >= min_qty:
                 exchange = exchanges[positions[0][0]]
@@ -214,6 +216,25 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                              side, -delta,
                              client_id=f"{order_prefix}T{int(time.time() * 1000)}",
                              reduce_only=True)
+            else:
+                # abs(delta) < min_qty
+                if delta > 0:
+                    exchange = exchanges[positions[0][0]]
+                    pos: PositionStatus = positions[0][1]
+                    side = 'sell' if pos.direction == PositionDirection.long else 'buy'
+                    market_order(exchange, symbol,
+                                 side, delta,
+                                 client_id=f"{order_prefix}T{int(time.time() * 1000)}",
+                                 reduce_only=True)
+                else:
+                    exchange = exchanges[positions[1][0]]
+                    pos: PositionStatus = positions[1][1]
+                    side = 'sell' if pos.direction == PositionDirection.long else 'buy'
+                    market_order(exchange, symbol,
+                                 side, -delta,
+                                 client_id=f"{order_prefix}T{int(time.time() * 1000)}",
+                                 reduce_only=True)
+
         except Exception as ex:
             logging.error(ex)
             logging.exception(ex)
