@@ -15,118 +15,94 @@ from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 def get_threshold_key(exchange):
     return f"order:thresholds:{exchange}"
 
+def init_symbol_config(symbol_info: OrderSymbolConfig) -> SymbolConfig:
+    return SymbolConfig(
+        short_threshold=ThresholdConfig(
+            increase_position_threshold=Decimal(
+                str(
+                    symbol_info.short_threshold_data.increase_position_threshold
+                )
+            ),
+            decrease_position_threshold=Decimal(
+                str(
+                    symbol_info.short_threshold_data.decrease_position_threshold
+                )
+            ),
+            cancel_increase_position_threshold=Decimal(
+                str(
+                    symbol_info.short_threshold_data.cancel_increase_position_threshold
+                )
+            ),
+            cancel_decrease_position_threshold=Decimal(
+                str(
+                    symbol_info.short_threshold_data.cancel_decrease_position_threshold
+                )
+            ),
+        ),
+        long_threshold=ThresholdConfig(
+            increase_position_threshold=Decimal(
+                str(
+                    symbol_info.long_threshold_data.increase_position_threshold
+                )
+            ),
+            decrease_position_threshold=Decimal(
+                str(
+                    symbol_info.long_threshold_data.decrease_position_threshold
+                )
+            ),
+            cancel_increase_position_threshold=Decimal(
+                str(
+                    symbol_info.long_threshold_data.cancel_increase_position_threshold
+                )
+            ),
+            cancel_decrease_position_threshold=Decimal(
+                str(
+                    symbol_info.long_threshold_data.cancel_decrease_position_threshold
+                )
+            ),
+        ),
+    )
+
+# use funding rate before open position
+def use_funding_rate_pre(makeonly_exchange_name: str, symbol_config: SymbolConfig, rc: redis.Redis, symbol_info: OrderSymbolConfig):
+    funding_info_raw = rc.get(
+        get_funding_rate_key('okex', symbol_info.symbol_name)
+    )
+    if funding_info_raw:
+        funding_info = orjson.loads(funding_info_raw)
+        if funding_info["delta"]:
+            delta = Decimal(funding_info["delta"])
+            long = symbol_config.long_threshold
+            short = symbol_config.short_threshold
+            if makeonly_exchange_name == 'okex':
+                if delta > 0:
+                    long.increase_position_threshold -= delta
+                    long.cancel_increase_position_threshold -= delta
+                elif delta < 0:
+                    short.increase_position_threshold -= delta
+                    short.cancel_increase_position_threshold -= delta
+            else:
+                if delta > 0:
+                    short.increase_position_threshold += delta
+                    short.cancel_increase_position_threshold += delta
+                elif delta < 0:
+                    long.increase_position_threshold += delta
+                    long.cancel_increase_position_threshold += delta
+    return symbol_config
+
+# use funding rate after open position
+def use_funding_rate_post():
+    pass
 
 def process_threshold_okex_maker_binance_taker(ctx: CancelContext, config: OrderConfig, rc: redis.Redis, symbol_info: OrderSymbolConfig):
-    ex_name = "okex"
-
+    ex_name = 'okex'
     try:
-        res = SymbolConfig(
-            short_threshold=ThresholdConfig(
-                increase_position_threshold=Decimal(
-                    str(
-                        symbol_info.short_threshold_data.increase_position_threshold
-                    )
-                ),
-                decrease_position_threshold=Decimal(
-                    str(
-                        symbol_info.short_threshold_data.decrease_position_threshold
-                    )
-                ),
-                cancel_increase_position_threshold=Decimal(
-                    str(
-                        symbol_info.short_threshold_data.cancel_increase_position_threshold
-                    )
-                ),
-                cancel_decrease_position_threshold=Decimal(
-                    str(
-                        symbol_info.short_threshold_data.cancel_decrease_position_threshold
-                    )
-                ),
-            ),
-            long_threshold=ThresholdConfig(
-                increase_position_threshold=Decimal(
-                    str(
-                        symbol_info.long_threshold_data.increase_position_threshold
-                    )
-                ),
-                decrease_position_threshold=Decimal(
-                    str(
-                        symbol_info.long_threshold_data.decrease_position_threshold
-                    )
-                ),
-                cancel_increase_position_threshold=Decimal(
-                    str(
-                        symbol_info.long_threshold_data.cancel_increase_position_threshold
-                    )
-                ),
-                cancel_decrease_position_threshold=Decimal(
-                    str(
-                        symbol_info.long_threshold_data.cancel_decrease_position_threshold
-                    )
-                ),
-            ),
-        )
-        funding_info_raw = rc.get(
-            get_funding_rate_key('okex', symbol_info.symbol_name)
-        )
-        if funding_info_raw:
-            funding_info = orjson.loads(funding_info_raw)
-            if funding_info["delta"]:
-                delta = Decimal(funding_info["delta"])
-                if delta > 0:
-                    long = res.long_threshold
-                    long.increase_position_threshold = (
-                        long.increase_position_threshold - delta
-                    )
-                    long.cancel_increase_position_threshold -= delta
-                    
-                    # long.cancel_increase_position_threshold = (
-                    #     long.decrease_position_threshold
-                    #     + (
-                    #         long.increase_position_threshold
-                    #         - long.decrease_position_threshold
-                    #     )
-                    #     * Decimal(
-                    #         config.default_cancel_increase_position_ratio
-                    #     )
-                    # )
-                    # long.cancel_decrease_position_threshold = (
-                    #     long.decrease_position_threshold
-                    #     + (
-                    #         long.increase_position_threshold
-                    #         - long.decrease_position_threshold
-                    #     )
-                    #     * Decimal(
-                    #         config.default_cancel_decrease_position_ratio
-                    #     )
-                    # )
-                elif delta < 0:
-                    short = res.short_threshold
-                    short.increase_position_threshold = (
-                        short.increase_position_threshold - delta
-                    )
-                    short.cancel_increase_position_threshold -= delta
+        # init based on json config
+        res = init_symbol_config(symbol_info)
 
-                    # short.cancel_increase_position_threshold = (
-                    #     short.decrease_position_threshold
-                    #     + (
-                    #         short.increase_position_threshold
-                    #         - short.decrease_position_threshold
-                    #     )
-                    #     * Decimal(
-                    #         config.default_cancel_increase_position_ratio
-                    #     )
-                    # )
-                    # short.cancel_decrease_position_threshold = (
-                    #     short.decrease_position_threshold
-                    #     + (
-                    #         short.increase_position_threshold
-                    #         - short.decrease_position_threshold
-                    #     )
-                    #     * Decimal(
-                    #         config.default_cancel_decrease_position_ratio
-                    #     )
-                    # )
+        # add symbol config process here
+        res = use_funding_rate_pre(ex_name, res, rc, symbol_info)
+
         return res
     except Exception as ex:
         logging.error(f"process_threshold_okex_maker error: {ex}")
@@ -135,116 +111,14 @@ def process_threshold_okex_maker_binance_taker(ctx: CancelContext, config: Order
 
 
 def process_threshold_binance_maker_okex_taker(ctx: CancelContext, config: OrderConfig, rc: redis.Redis, symbol_info: OrderSymbolConfig):
-    ex_name = "okex"
-
+    ex_name = 'binance'
     try:
-        res = SymbolConfig(
-            short_threshold=ThresholdConfig(
-                increase_position_threshold=Decimal(
-                    str(
-                        symbol_info.short_threshold_data.increase_position_threshold
-                    )
-                ),
-                decrease_position_threshold=Decimal(
-                    str(
-                        symbol_info.short_threshold_data.decrease_position_threshold
-                    )
-                ),
-                cancel_increase_position_threshold=Decimal(
-                    str(
-                        symbol_info.short_threshold_data.cancel_increase_position_threshold
-                    )
-                ),
-                cancel_decrease_position_threshold=Decimal(
-                    str(
-                        symbol_info.short_threshold_data.cancel_decrease_position_threshold
-                    )
-                ),
-            ),
-            long_threshold=ThresholdConfig(
-                increase_position_threshold=Decimal(
-                    str(
-                        symbol_info.long_threshold_data.increase_position_threshold
-                    )
-                ),
-                decrease_position_threshold=Decimal(
-                    str(
-                        symbol_info.long_threshold_data.decrease_position_threshold
-                    )
-                ),
-                cancel_increase_position_threshold=Decimal(
-                    str(
-                        symbol_info.long_threshold_data.cancel_increase_position_threshold
-                    )
-                ),
-                cancel_decrease_position_threshold=Decimal(
-                    str(
-                        symbol_info.long_threshold_data.cancel_decrease_position_threshold
-                    )
-                ),
-            ),
-        )
-        funding_info_raw = rc.get(
-            get_funding_rate_key('okex', symbol_info.symbol_name)
-        )
-        if funding_info_raw:
-            funding_info = orjson.loads(funding_info_raw)
-            if funding_info["delta"]:
-                delta = Decimal(funding_info["delta"])
-                if delta < 0:
-                    long = res.long_threshold
-                    long.increase_position_threshold = (
-                        long.increase_position_threshold + delta
-                    )
-                    long.cancel_increase_position_threshold += delta
+        # init based on json config
+        res = init_symbol_config(symbol_info)
 
-                    # long.cancel_increase_position_threshold = (
-                    #     long.decrease_position_threshold
-                    #     + (
-                    #         long.increase_position_threshold
-                    #         - long.decrease_position_threshold
-                    #     )
-                    #     * Decimal(
-                    #         config.default_cancel_increase_position_ratio
-                    #     )
-                    # )
-                    # long.cancel_decrease_position_threshold = (
-                    #     long.decrease_position_threshold
-                    #     + (
-                    #         long.increase_position_threshold
-                    #         - long.decrease_position_threshold
-                    #     )
-                    #     * Decimal(
-                    #         config.default_cancel_decrease_position_ratio
-                    #     )
-                    # )
-                elif delta > 0:
-                    short = res.short_threshold
-                    short.increase_position_threshold = (
-                        short.increase_position_threshold + delta
-                    )
-                    short.cancel_increase_position_threshold += delta
+        # add symbol config process here
+        res = use_funding_rate_pre(ex_name, res, rc, symbol_info)
 
-                    # short.cancel_increase_position_threshold = (
-                    #     short.decrease_position_threshold
-                    #     + (
-                    #         short.increase_position_threshold
-                    #         - short.decrease_position_threshold
-                    #     )
-                    #     * Decimal(
-                    #         config.default_cancel_increase_position_ratio
-                    #     )
-                    # )
-                    # short.cancel_decrease_position_threshold = (
-                    #     short.decrease_position_threshold
-                    #     + (
-                    #         short.increase_position_threshold
-                    #         - short.decrease_position_threshold
-                    #     )
-                    #     * Decimal(
-                    #         config.default_cancel_decrease_position_ratio
-                    #     )
-                    # )
         return res
     except Exception as ex:
         logging.error(f"process_threshold_okex_maker error: {ex}")
