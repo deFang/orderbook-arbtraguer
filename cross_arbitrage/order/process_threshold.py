@@ -63,68 +63,46 @@ def init_symbol_config(symbol_info: OrderSymbolConfig) -> SymbolConfig:
         ),
     )
 
-# use funding rate before open position
-def use_funding_rate_pre(makeonly_exchange_name: str, symbol_config: SymbolConfig, rc: redis.Redis, symbol_info: OrderSymbolConfig):
-    funding_info_raw = rc.get(
-        get_funding_rate_key('okex', symbol_info.symbol_name)
-    )
-    if funding_info_raw:
-        funding_info = orjson.loads(funding_info_raw)
-        if funding_info["delta"]:
-            delta = Decimal(funding_info["delta"])
-            long = symbol_config.long_threshold
-            short = symbol_config.short_threshold
-            if makeonly_exchange_name == 'okex':
-                if delta > 0:
-                    long.increase_position_threshold -= delta
-                    long.cancel_increase_position_threshold -= delta
-                elif delta < 0:
-                    short.increase_position_threshold -= delta
-                    short.cancel_increase_position_threshold -= delta
-            else:
-                if delta > 0:
-                    short.increase_position_threshold += delta
-                    short.cancel_increase_position_threshold += delta
-                elif delta < 0:
-                    long.increase_position_threshold += delta
-                    long.cancel_increase_position_threshold += delta
-    return symbol_config
+def process_funding_rate(threshold: SymbolConfig, symbol_info: OrderSymbolConfig, rc: redis.Redis) -> SymbolConfig:
+    # TODO
+    return threshold
 
-# use funding rate after open position
-def use_funding_rate_post():
-    pass
+def process_orderbook_stat(threshold: SymbolConfig, symbol_info: OrderSymbolConfig, rc: redis.Redis) -> SymbolConfig:
+    # TODO
+    return threshold
 
-def process_threshold_okex_maker_binance_taker(ctx: CancelContext, config: OrderConfig, rc: redis.Redis, symbol_info: OrderSymbolConfig):
-    ex_name = 'okex'
-    try:
-        # init based on json config
-        res = init_symbol_config(symbol_info)
-
-        # add symbol config process here
-        res = use_funding_rate_pre(ex_name, res, rc, symbol_info)
-
-        return res
-    except Exception as ex:
-        logging.error(f"process_threshold_okex_maker error: {ex}")
-        logging.exception(ex)
-        return None
-
-
-def process_threshold_binance_maker_okex_taker(ctx: CancelContext, config: OrderConfig, rc: redis.Redis, symbol_info: OrderSymbolConfig):
-    ex_name = 'binance'
-    try:
-        # init based on json config
-        res = init_symbol_config(symbol_info)
-
-        # add symbol config process here
-        res = use_funding_rate_pre(ex_name, res, rc, symbol_info)
-
-        return res
-    except Exception as ex:
-        logging.error(f"process_threshold_okex_maker error: {ex}")
-        logging.exception(ex)
-        return None
-
+def process_funding_rate_binance_okex_pair(ctx: CancelContext, threshold: SymbolConfig, config: OrderConfig, symbol_info: OrderSymbolConfig, rc: redis.Redis) -> SymbolConfig:
+    ex_name = symbol_info.makeonly_exchange_name
+    if ex_name:
+        try:
+            funding_info_raw = rc.get(
+                get_funding_rate_key('okex', symbol_info.symbol_name)
+            )
+            if funding_info_raw:
+                funding_info = orjson.loads(funding_info_raw)
+                if funding_info["delta"]:
+                    delta = Decimal(funding_info["delta"])
+                    long = threshold.long_threshold
+                    short = threshold.short_threshold
+                    if ex_name == 'okex':
+                        if delta > 0:
+                            long.increase_position_threshold -= delta
+                            long.cancel_increase_position_threshold -= delta
+                        elif delta < 0:
+                            short.increase_position_threshold -= delta
+                            short.cancel_increase_position_threshold -= delta
+                    else:
+                        if delta > 0:
+                            short.increase_position_threshold += delta
+                            short.cancel_increase_position_threshold += delta
+                        elif delta < 0:
+                            long.increase_position_threshold += delta
+                            long.cancel_increase_position_threshold += delta
+            return threshold
+        except Exception as ex:
+            logging.error(f"process_funding_rate_binance_okex_pair error: {ex}")
+            logging.exception(ex)
+            return threshold
 
 def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
     # init redis client
@@ -138,19 +116,29 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
 
     while not ctx.is_canceled():
         for symbol_info in config.cross_arbitrage_symbol_datas:
-            # ex_name = symbol_info.makeonly_exchange_name
+            # init
+            threshold = init_symbol_config(symbol_info)
+
+            # okex binance pair
             maker_exchange_name = symbol_info.makeonly_exchange_name
             taker_exchange_name = get_taker_exchange_name(maker_exchange_name)
             match (maker_exchange_name, taker_exchange_name):
                 case 'okex', 'binance':
-                    threshold = process_threshold_okex_maker_binance_taker(
-                        ctx, config, rc, symbol_info)
+                    threshold = process_funding_rate_binance_okex_pair(
+                        ctx, threshold, config, symbol_info, rc)
                 case 'binance', 'okex':
-                    threshold = process_threshold_binance_maker_okex_taker(
-                        ctx, config, rc, symbol_info)
+                    threshold = process_funding_rate_binance_okex_pair(
+                        ctx, threshold, config, symbol_info, rc)
                 case _:
                     raise ValueError(
                         f"unknown exchange pair: {maker_exchange_name}, {taker_exchange_name}")
+
+            # funding rate
+            threshold = process_funding_rate(threshold, symbol_info, rc)
+
+            # orderbook stat
+            threshold = process_orderbook_stat(threshold, symbol_info, rc)
+
             if threshold is not None:
                 try:
                     rc.hset(
