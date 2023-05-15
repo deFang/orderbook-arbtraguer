@@ -1,12 +1,15 @@
 from functools import lru_cache
 import logging
 from decimal import Decimal
+from typing import List
 
 import orjson
 import redis
 
 from cross_arbitrage.fetch.fetch_funding_rate import get_funding_rate_key
+from cross_arbitrage.fetch.utils.common import now_s
 from cross_arbitrage.order.config import OrderConfig
+from cross_arbitrage.order.position_status import PositionDirection, PositionStatus, get_position_status
 from cross_arbitrage.order.threshold import SymbolConfig, ThresholdConfig
 from cross_arbitrage.order.config import SymbolConfig as OrderSymbolConfig
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
@@ -63,8 +66,62 @@ def init_symbol_config(symbol_info: OrderSymbolConfig) -> SymbolConfig:
         ),
     )
 
-def process_funding_rate(threshold: SymbolConfig, symbol_info: OrderSymbolConfig, rc: redis.Redis) -> SymbolConfig:
-    # TODO
+def _get_threshold_by_funding_delta(symbol:str, threshold: SymbolConfig, maker_position:PositionStatus, funding_delta:Decimal, \
+        percent: Decimal, max_threshold:Decimal):
+    long = threshold.long_threshold
+    short = threshold.short_threshold
+    if maker_position.direction == PositionDirection.long and funding_delta > 0:
+        old_threshold = long.decrease_position_threshold
+        long.decrease_position_threshold = max(long.decrease_position_threshold - funding_delta * percent, -max_threshold)
+        long.cancel_increase_position_threshold += (long.decrease_position_threshold - old_threshold)
+        logging.info(f"{symbol} {percent} funding_delta={funding_delta} long_threshold={long.decrease_position_threshold} long_cancel={long.cancel_increase_position_threshold}")
+    elif maker_position.direction == PositionDirection.short and funding_delta < 0:
+        old_threshold = short.decrease_position_threshold
+        short.decrease_position_threshold = min(short.decrease_position_threshold - funding_delta * percent, max_threshold)
+        short.cancel_increase_position_threshold += (short.decrease_position_threshold - old_threshold)
+        logging.info(f"{symbol} {percent} funding_delta={funding_delta} short_threshold={long.decrease_position_threshold} short_cancel={long.cancel_increase_position_threshold}")
+    return threshold
+
+def process_funding_rate(threshold: SymbolConfig, symbol_info: OrderSymbolConfig, exchange_names: List[str], rc: redis.Redis) -> SymbolConfig:
+    try:
+        now = now_s()
+        funding_interval = 8 * 60 * 60  # 8 hours
+        max_threshold = Decimal(0.0008)
+
+        # ingore if not in last 3 hours of a funding interval
+        if (now % funding_interval) / (60 * 60) <= 5.0:
+            return threshold
+        maker_exchange_name, taker_exchange_name = exchange_names
+
+        maker_position = get_position_status(rc, maker_exchange_name, symbol_info.symbol_name)
+        # return if not has position
+        if not maker_position or maker_position.qty == Decimal(0):
+            return threshold
+
+        res = []
+        with rc.pipeline() as pipe:
+            pipe.multi()
+            pipe.get(get_funding_rate_key(maker_exchange_name, symbol_info.symbol_name))
+            pipe.get(get_funding_rate_key(taker_exchange_name, symbol_info.symbol_name))
+            res = pipe.execute()
+
+        # return if any funding rate is None
+        if not all(res):
+            return threshold
+        maker_funding_info = orjson.loads(res[0])
+        taker_funding_info = orjson.loads(res[1])
+
+        funding_delta = Decimal(maker_funding_info['funding_rate']) - Decimal(taker_funding_info['funding_rate'])
+
+        if (now % funding_interval) / (60 * 60) <= 6.0:
+            threshold = _get_threshold_by_funding_delta(symbol_info.symbol_name, threshold, maker_position, funding_delta, Decimal('0.33'), max_threshold)
+        if (now % funding_interval) / (60 * 60) <= 7.0:
+            threshold = _get_threshold_by_funding_delta(symbol_info.symbol_name, threshold, maker_position, funding_delta, Decimal('0.67'), max_threshold)
+        if (now % funding_interval) / (60 * 60) <= 7.5:
+            threshold = _get_threshold_by_funding_delta(symbol_info.symbol_name, threshold, maker_position, funding_delta, Decimal('1'), max_threshold)
+    except Exception as ex:
+        logging.error(f"process_funding_rate error: {ex}")
+        logging.exception(ex)
     return threshold
 
 def process_orderbook_stat(threshold: SymbolConfig, symbol_info: OrderSymbolConfig, rc: redis.Redis) -> SymbolConfig:
@@ -98,6 +155,8 @@ def process_funding_rate_binance_okex_pair(ctx: CancelContext, threshold: Symbol
                         elif delta < 0:
                             long.increase_position_threshold += delta
                             long.cancel_increase_position_threshold += delta
+
+                    logging.info(f"{symbol_info.symbol_name} funding_delta={funding_info['delta']} threshold={threshold}")
             return threshold
         except Exception as ex:
             logging.error(f"process_funding_rate_binance_okex_pair error: {ex}")
@@ -123,10 +182,7 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
             maker_exchange_name = symbol_info.makeonly_exchange_name
             taker_exchange_name = get_taker_exchange_name(maker_exchange_name)
             match (maker_exchange_name, taker_exchange_name):
-                case 'okex', 'binance':
-                    threshold = process_funding_rate_binance_okex_pair(
-                        ctx, threshold, config, symbol_info, rc)
-                case 'binance', 'okex':
+                case ('okex', 'binance') | ('binance', 'okex'):
                     threshold = process_funding_rate_binance_okex_pair(
                         ctx, threshold, config, symbol_info, rc)
                 case _:
@@ -134,7 +190,7 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
                         f"unknown exchange pair: {maker_exchange_name}, {taker_exchange_name}")
 
             # funding rate
-            threshold = process_funding_rate(threshold, symbol_info, rc)
+            threshold = process_funding_rate(threshold, symbol_info, [maker_exchange_name, taker_exchange_name], rc)
 
             # orderbook stat
             threshold = process_orderbook_stat(threshold, symbol_info, rc)
