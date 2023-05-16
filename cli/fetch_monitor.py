@@ -85,7 +85,7 @@ def main(env: str):
                 }
                 # print(mdata)
                 logging.info(
-                        f"{symbol:>10} {current_ts} {(mdata['current_ts'] - mdata['process_ts']):>3}ms    bn diff: {(mdata['process_ts'] - mdata['binance_ts']):>3}ms   ok diff: {(mdata['process_ts'] - mdata['okex_ts']):>3}ms"
+                        f"{symbol:>12} {current_ts} {(mdata['current_ts'] - mdata['process_ts']):>3}ms    bn diff: {(mdata['process_ts'] - mdata['binance_ts']):>4}ms   ok diff: {(mdata['process_ts'] - mdata['okex_ts']):>4}ms"
             )
         except Exception as ex:
             logging.error(ex)
