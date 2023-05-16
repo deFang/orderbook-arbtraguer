@@ -117,6 +117,6 @@ def fetch_funding_rate_mainloop(config: FetchConfig, ctx: CancelContext):
                 except Exception as ex:
                     logging.exception(ex)
 
-            sleep_with_context(ctx, 5)
+            sleep_with_context(ctx, 3)
 
-        sleep_with_context(ctx, seconds=30 * 60 - now_s() + start_at)
+        sleep_with_context(ctx, seconds=6 * 60 - now_s() + start_at)
