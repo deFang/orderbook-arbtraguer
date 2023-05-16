@@ -12,6 +12,11 @@
   "default_max_notional_per_symbol": 100,
   "default_cancel_position_timeout": 120,
   "symbol_leverage": 2,
+  "dyn_threshold": {
+    "increase_sigma": 4.0,
+    "decrease_sigma": -2.0,
+    "time_window_seconds": 1800
+  },
   "output_data": {
     "order_loop": "./data/order_loop.csv"
   },

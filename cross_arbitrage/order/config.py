@@ -16,6 +16,13 @@ from cross_arbitrage.fetch.utils.common import load_json_file, merge_dict
 class OutputData(BaseModel):
     order_loop: str
 
+
+class DynThreshold(BaseModel):
+    increase_sigma: float = 1.0
+    decrease_sigma: float = -1.0
+    time_window_seconds: int = 1800
+
+
 class OrderConfig(BaseModel):
     env: str = "dev"
     log: LogConfig
@@ -39,6 +46,7 @@ class OrderConfig(BaseModel):
     default_cancel_position_timeout: float = 120.0  # seconds
     max_used_margin: float = 0.9
     symbol_leverage: int = 2
+    dyn_threshold: DynThreshold
 
     dry_run: bool = False
 
