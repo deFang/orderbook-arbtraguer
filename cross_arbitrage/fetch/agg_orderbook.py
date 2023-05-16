@@ -60,7 +60,7 @@ def agg_orderbooks_from_redis(
             rc.xadd(
                 output_stream,
                 {symbol: json.dumps(order_book)},
-                maxlen=100000,
+                maxlen=2000000,
                 approximate=True,
             )
         except Exception as e:
