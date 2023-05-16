@@ -171,6 +171,7 @@ def process_okex_taskqueue_task(
                             f"-- order status: {color(exchange_color,order.exchange)} id={order.id} {order.symbol} {color(exchange_color,order.type) if order.type == OrderType.limit else order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
                         )
                         rc.rpush(key, order.json())
+                        rc.expire(key, 60*30)
         except queue.Empty:
             pass
 
@@ -202,6 +203,7 @@ def process_binance_taskqueue_task(
                         f"-- order status: {color(exchange_color,order.exchange)} id={order.id} {order.symbol} {color(exchange_color,order.type) if order.type == OrderType.limit else order.type} {order.side} {order.price} {order.amount} filled={order.filled} {color(status_color, order.status)} "
                     )
                     rc.rpush(key, order.json())
+                    rc.expire(key, 60*30)
         except queue.Empty:
             pass
 
