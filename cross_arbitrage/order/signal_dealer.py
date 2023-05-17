@@ -224,8 +224,9 @@ def _deal_loop_impl(ctx: CancelContext, config: OrderConfig, signal: OrderSignal
                     mark_clear_time = time.time()
                     continue
                 elif time.time() - mark_clear_time > 20:
-                    logging.info(
-                        f'order should be canceled, but not signal fetched: {maker_order_id}({maker_client_id})')
+                    if not is_canceled_or_filled:
+                        logging.info(
+                            f'order should be canceled, but not signal fetched: {maker_order_id}({maker_client_id})')
                 else:
                     time.sleep(0.1)
                     continue
