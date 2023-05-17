@@ -16,9 +16,6 @@ import redis
 
 import pydantic
 
-# align position cache, used to ignore min notional
-_align_position_cache = {}
-
 
 class PositionDirection(str, Enum):
     long = "long"
@@ -232,13 +229,10 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                         else:
                             side = 'buy' if pos.direction == PositionDirection.long else 'sell'
                             reduce_only = False
-                        cache_key = f"{exchange.name}_{symbol}"
-                        if reduce_only or not _align_position_cache.get(cache_key) or \
-                                _align_position_cache[cache_key] < abs(delta):
-                            market_order(exchange, symbol,
-                                         side, abs(delta),
-                                         client_id=f"{order_prefix}T{int(time.time() * 1000)}",
-                                         reduce_only=reduce_only)
+                        market_order(exchange, symbol,
+                                     side, abs(delta),
+                                     client_id=f"{order_prefix}T{int(time.time() * 1000)}",
+                                     reduce_only=reduce_only)
                     else:
                         exchange = exchanges[positions[1][0]]
                         pos: PositionStatus = positions[1][1]
@@ -248,20 +242,13 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
                             reduce_only = False
                         else:
                             side = 'sell' if pos.direction == PositionDirection.long else 'buy'
-                        cache_key = f"{exchange.name}_{symbol}"
-                        if reduce_only or not _align_position_cache.get(cache_key) or \
-                                _align_position_cache[cache_key] < abs(delta):
-                            market_order(exchange, symbol,
-                                         side, abs(delta),
-                                         client_id=f"{order_prefix}T{int(time.time() * 1000)}",
-                                         reduce_only=reduce_only)
+                        market_order(exchange, symbol,
+                                     side, abs(delta),
+                                     client_id=f"{order_prefix}T{int(time.time() * 1000)}",
+                                     reduce_only=reduce_only)
                 except Exception as e:
                     if isinstance(e, ccxt.ExchangeError) and 'notional must be no smaller' in str(e):
                         logging.info(f'{exchange.name} {symbol} notional too small: {e}')
-                        cache_key = f"{exchange.name}_{symbol}"
-                        if not _align_position_cache.get(cache_key) or \
-                                _align_position_cache[cache_key] < abs(delta):
-                            _align_position_cache[cache_key] = abs(delta)
                     else:
                         logging.error(e)
                         logging.exception(e)
