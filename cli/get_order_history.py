@@ -200,6 +200,7 @@ def gen_order_csv(exchange, symbols, env):
                             "reduceOnly": o["reduceOnly"],
                             "leverage": o["lever"],
                             "fee": o["fee"],
+                            "source": exchange.ex_name,
                         }
                     )
 
@@ -220,6 +221,7 @@ def gen_order_csv(exchange, symbols, env):
                     "executedQty",
                     "cost",
                     "status",
+                    "source",
                 ],
                 dictlist=res,
                 file_mode="w",
@@ -266,6 +268,7 @@ def gen_order_csv(exchange, symbols, env):
                         "timeInForce": o["info"]["timeInForce"],
                         "reduceOnly": o["info"]["reduceOnly"],
                         "closePosition": o["info"]["closePosition"],
+                        "source": exchange.ex_name,
                     }
                 )
 
@@ -287,6 +290,7 @@ def gen_order_csv(exchange, symbols, env):
                     "cost",
                     "status",
                     "timeInForce",
+                    "source",
                 ],
                 dictlist=res,
                 file_mode="w",

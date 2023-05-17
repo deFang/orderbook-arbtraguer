@@ -11,16 +11,22 @@ from cross_arbitrage.utils.exchange import get_bag_size
 from cross_arbitrage.utils.logger import init_logger
 from cross_arbitrage.utils.symbol_mapping import SymbolMappingNotFoundError, get_common_symbol_from_exchange_symbol, init_symbol_mapping_from_file
 
+total_balance = {"wallet": 0, "dyn_margin": 0}
+
 def print_balance(exchange):
     balance1 = exchange.fetch_balance()
     match exchange:
         case ccxt.okex():
             if len(balance1['info']['data'][0]['details']) > 0:
                 print(f"--- okex    eq={balance1['info']['data'][0]['details'][0]['eq']} wallet={balance1['info']['data'][0]['details'][0]['cashBal']}")
+                total_balance['wallet'] += float(balance1['info']['data'][0]['details'][0]['cashBal'])
+                total_balance['dyn_margin'] += float(balance1['info']['data'][0]['details'][0]['eq'])
             else:
                 print(f"--- okex    eq=0.0 wallet=0.0")
         case ccxt.binanceusdm():
             print(f"--- binance eq={balance1['info']['totalMarginBalance']} wallet={balance1['info']['totalWalletBalance']}")
+            total_balance['wallet'] += float(balance1['info']['totalWalletBalance'])
+            total_balance['dyn_margin'] += float(balance1['info']['totalMarginBalance'])
 
     print(f'{exchange.ex_name} total',
         {
@@ -103,6 +109,7 @@ def main(env):
 
     print_balance(binance)
     print_balance(okex)
+    print(total_balance)
 
     p1 = print_positions(binance)
     p2 = print_positions(okex)
