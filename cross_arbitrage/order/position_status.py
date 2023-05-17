@@ -152,12 +152,12 @@ def align_position(rc: redis.Redis, exchanges: dict[str, ccxt.Exchange], symbols
             if positions[0][1] is None and positions[1][1] is None:
                 continue
             if positions[0][1] is None:
-                if positions[1][1].qty < min_qty:
+                if positions[1][1].qty < get_symbol_min_amount_by_exchange(exchanges[positions[1][0]], symbol):
                     continue
                 else:
                     delta = -positions[1][1].qty
             elif positions[1][1] is None:
-                if positions[0][1].qty < min_qty:
+                if positions[0][1].qty < get_symbol_min_amount_by_exchange(exchanges[positions[0][0]], symbol):
                     continue
                 else:
                     delta = positions[0][1].qty
