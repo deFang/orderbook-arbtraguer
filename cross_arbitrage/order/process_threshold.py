@@ -70,7 +70,7 @@ def init_symbol_config(symbol_info: OrderSymbolConfig) -> SymbolConfig:
         ),
     )
 
-def _get_threshold_by_funding_delta(ex_name:str, threshold: SymbolConfig, symbol_info: OrderSymbolConfig, funding_delta:Decimal, \
+def _get_threshold_by_funding_delta(ex_name:str, threshold: SymbolConfig, config: OrderConfig, symbol_info: OrderSymbolConfig, funding_delta:Decimal, \
         percent: Decimal, max_threshold:Decimal):
     symbol = symbol_info.symbol_name
     long = threshold.long_threshold
@@ -86,7 +86,8 @@ def _get_threshold_by_funding_delta(ex_name:str, threshold: SymbolConfig, symbol
             long.increase_position_threshold = tmp_threshold
             long.cancel_increase_position_threshold = Decimal(str(symbol_info.long_threshold_data.cancel_increase_position_threshold)) + \
                     (long.decrease_position_threshold - old_threshold)
-        logging.info(f"{ex_name} {symbol} {percent} funding_delta={funding_delta} long_threshold={long}")
+        if config.debug:
+            logging.info(f"{ex_name} {symbol} {percent} funding_delta={funding_delta} long_threshold={long}")
     else:
         old_threshold = short.decrease_position_threshold
         short.decrease_position_threshold = min(short.decrease_position_threshold - funding_delta * percent, max_threshold)
@@ -98,11 +99,12 @@ def _get_threshold_by_funding_delta(ex_name:str, threshold: SymbolConfig, symbol
             short.increase_position_threshold = tmp_threshold
             short.cancel_increase_position_threshold = Decimal(str(symbol_info.short_threshold_data.cancel_increase_position_threshold)) + \
                     (short.decrease_position_threshold - old_threshold)
-        logging.info(f"{ex_name} {symbol} {percent} funding_delta={funding_delta} short_threshold={short}")
+        if config.debug:
+            logging.info(f"{ex_name} {symbol} {percent} funding_delta={funding_delta} short_threshold={short}")
     return threshold
 
 
-def process_funding_rate(threshold: SymbolConfig, symbol_info: OrderSymbolConfig, exchange_names: List[str], rc: redis.Redis) -> SymbolConfig:
+def process_funding_rate(threshold: SymbolConfig, config: OrderConfig, symbol_info: OrderSymbolConfig, exchange_names: List[str], rc: redis.Redis) -> SymbolConfig:
     try:
         now = now_s()
         funding_interval = 8 * 60 * 60  # 8 hours
@@ -137,11 +139,11 @@ def process_funding_rate(threshold: SymbolConfig, symbol_info: OrderSymbolConfig
             maker_funding_info['funding_rate']) - Decimal(taker_funding_info['funding_rate'])
 
         if (now % funding_interval) / (60 * 60) <= 6.0:
-            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, symbol_info, funding_delta, Decimal('0.33'), max_threshold)
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.33'), max_threshold)
         elif (now % funding_interval) / (60 * 60) <= 7:
-            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, symbol_info, funding_delta, Decimal('0.67'), max_threshold)
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.67'), max_threshold)
         elif (now % funding_interval) / (60 * 60) <= 7.933: # 56 minutes
-            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, symbol_info, funding_delta, Decimal('1'), max_threshold)
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), max_threshold)
     except Exception as ex:
         logging.error(f"process_funding_rate error: {ex}")
         logging.exception(ex)
@@ -245,8 +247,9 @@ def process_funding_rate_binance_okex_pair(ctx: CancelContext, threshold: Symbol
                             long.increase_position_threshold += delta
                             long.cancel_increase_position_threshold += delta
 
-                    logging.info(
-                        f"{symbol_info.makeonly_exchange_name} {symbol_info.symbol_name} funding_delta={funding_info['delta']} threshold={threshold}")
+                    if config.debug:
+                        logging.info(
+                            f"{symbol_info.makeonly_exchange_name} {symbol_info.symbol_name} funding_delta={funding_info['delta']} threshold={threshold}")
             return threshold
         except Exception as ex:
             logging.error(
@@ -336,7 +339,7 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
                         f"unknown exchange pair: {maker_exchange_name}, {taker_exchange_name}")
 
             # funding rate
-            threshold = process_funding_rate(threshold, symbol_info, [
+            threshold = process_funding_rate(threshold, config, symbol_info, [
                                              maker_exchange_name, taker_exchange_name], rc)
 
             # orderbook stat
