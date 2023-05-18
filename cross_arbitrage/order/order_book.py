@@ -121,7 +121,7 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     low_cancel_threshold = threshold.short_threshold.cancel_decrease_position_threshold
 
             # if maker exchange price if higher
-            if float(maker_ob['asks'][0][0]) > float(taker_ob['asks'][0][0]) * float(1 + high_delta):
+            if len(maker_ob['asks']) and len(taker_ob['asks']) and float(maker_ob['asks'][0][0]) > float(taker_ob['asks'][0][0]) * float(1 + high_delta):
                 bag_size = get_bag_size_by_ex_name(taker_exchange, symbol)
                 qty = Decimal(
                     str(np.average(np.array(taker_ob['asks'], dtype=np.float64)[:5, 1]))) * bag_size
@@ -143,7 +143,7 @@ def get_signal_from_orderbooks(rc: redis.Redis, exchanges: dict[str, ccxt.Exchan
                     is_reduce_position=is_reduce_position,
                 )
             # else if maker exchange price if lower
-            elif float(maker_ob['bids'][0][0]) < float(taker_ob['bids'][0][0]) * float(1 + low_delta):
+            elif len(maker_ob['bids']) and len(taker_ob['bids']) and float(maker_ob['bids'][0][0]) < float(taker_ob['bids'][0][0]) * float(1 + low_delta):
                 bag_size = get_bag_size_by_ex_name(taker_exchange, symbol)
                 qty = Decimal(
                     str(np.average(np.array(taker_ob['bids'], dtype=np.float64)[:5, 1]))) * bag_size
