@@ -322,6 +322,7 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
         orderbook = get_orderbook(ctx, config, rc, symbols_set)
 
         ob_df = get_dataframe_from_orderbook(orderbook, exchanges)
+        del orderbook
 
         for symbol_info in config.cross_arbitrage_symbol_datas:
             # init
@@ -356,5 +357,5 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
                     logging.error(
                         f"save threshold error: {ex}, {threshold=}, {maker_exchange_name=}")
                     logging.exception(ex)
-
+        del ob_df
         sleep_with_context(ctx, 2 * 60, interval=1.0)
