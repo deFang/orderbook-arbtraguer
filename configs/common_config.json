@@ -6,7 +6,8 @@
   },
   "redis": {
     "url": "redis://localhost:6379/1",
-    "orderbook_stream": "orderbook"
+    "orderbook_stream": "orderbook",
+    "orderbook_stream_size": 2000000
   },
 
   "cross_arbitrage_symbol_datas": [],
