@@ -38,9 +38,6 @@ class Threshold:
     rc: redis.Redis
     redis_key: str
     config: OrderConfig
-    makeonly_exchange: str
-
-    symbol_thresholds: dict[str, SymbolConfig] = {}
 
     def __init__(self, config, rc,
                  key=None,
@@ -52,6 +49,7 @@ class Threshold:
             key = key_fmt.format(makeonly_exchange=makeonly_exchange)
         self.redis_key = key
         self.makeonly_exchange = makeonly_exchange
+        self.symbol_thresholds: dict[str, SymbolConfig] = {}
 
     def refresh_thresholds(self):
         redis_thresholds = self.rc.hgetall(self.redis_key)
