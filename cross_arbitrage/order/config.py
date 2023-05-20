@@ -1,6 +1,6 @@
 import logging
 from decimal import Decimal
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Any
 
 from pydantic import BaseModel, root_validator, validator
 
@@ -51,6 +51,8 @@ class OrderConfig(BaseModel):
     dry_run: bool = False
 
     output_data: OutputData
+
+    symbol_name_datas: Dict[str, Any] = {}
 
     @validator("env")
     def env_must_in_list(cls, value):

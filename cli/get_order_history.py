@@ -15,13 +15,16 @@ from cross_arbitrage.fetch.utils.common import (base_name, get_project_root,
                                                 now_ms, save_dictlist_to_csv)
 from cross_arbitrage.order.config import get_config
 from cross_arbitrage.order.globals import init_globals
+from cross_arbitrage.utils.ccxt_patch import patch
 from cross_arbitrage.utils.decorator import paged_since, retry
 from cross_arbitrage.utils.exchange import get_bag_size
 from cross_arbitrage.utils.logger import init_logger
 from cross_arbitrage.utils.symbol_mapping import (
     get_ccxt_symbol, get_ccxt_symbols, get_common_symbol_from_exchange_symbol,
     get_exchange_symbol, get_exchange_symbol_from_exchange,
-    init_symbol_mapping_from_file)
+    init_symbol_mapping_from_file, init_symbol_mapping)
+
+patch()
 
 # constants
 DATA_DIR = "data"
@@ -82,11 +85,20 @@ def set_normalized_symbol(row):
 def fetch_closed_orders(exchange, symbol, since, limit=1000):
     return exchange.fetch_orders(symbol=symbol, since=since, limit=limit)
 
+@retry(max_retry_count=2, retry_interval_base=0.5)
+def fetch_funding_history(exchange, since, limit=100):
+    return exchange.fetch_funding_history(since=since, limit=limit)
 
 @paged_since(since_field_name="timestamp", paged_id_field_name="id")
 def fetch_closed_orders_since(exchange, symbol, since, limit=1000):
     return fetch_closed_orders(
         exchange, symbol=symbol, since=since, limit=limit
+    )
+
+@paged_since(since_field_name="timestamp", paged_id_field_name="id")
+def fetch_funding_history_since(exchange, since, limit=100):
+    return fetch_funding_history(
+        exchange, since=since, limit=limit
     )
 
 
@@ -378,8 +390,8 @@ def analysis_orders(env):
 
 
 def gen_funding_csv(exchange, ccxt_symbols, since, env):
-    res = exchange.fetch_funding_history(since=since)
-    res  = [r for r in res if r['symbol'] in ccxt_symbols]
+    res = fetch_funding_history_since(exchange, since=since, limit=100)
+    #res  = [r for r in res if r['symbol'] in ccxt_symbols]
     save_dictlist_to_csv(
         f"{DATA_DIR}/{env}_{exchange.ex_name}_funding_{date_now_str()}.csv",
         headers=[
@@ -417,12 +429,8 @@ def main(env: str, since: str):
     config = get_config(file_path=config_files, env=env)
     logger.setLevel(getattr(logging, config.log.level.upper()))
     config.print()
-    init_symbol_mapping_from_file(
-        join(get_project_root(), "configs/common_config.json")
-    )
-
+    init_symbol_mapping(config.symbol_name_datas)
     init_globals(config)
-
     symbols = [
         symbol.symbol_name for symbol in config.cross_arbitrage_symbol_datas
     ]

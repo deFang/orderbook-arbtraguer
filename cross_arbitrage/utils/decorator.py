@@ -78,7 +78,7 @@ def paged_since(
             result_dict = collections.OrderedDict()
             while True:
                 try:
-                    logging.debug(
+                    logging.info(
                         f"{func} with paged_since: page={paged_count} limit={limit} since={since}"
                     )
                     res = func(*args, **kwargs)
@@ -101,7 +101,7 @@ def paged_since(
                         f"{func}: reach the max_paged_count({max_paged_count})"
                     )
                     break
-                logging.info(f"{func}: paged with index {paged_count}")
+                # logging.info(f"{func}: paged with index {paged_count}")
                 time.sleep(paged_interval)
 
             for item in result:

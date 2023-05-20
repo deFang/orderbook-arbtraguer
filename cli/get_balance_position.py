@@ -9,7 +9,7 @@ from cross_arbitrage.order.config import get_config
 from cross_arbitrage.order.globals import init_globals
 from cross_arbitrage.utils.exchange import get_bag_size
 from cross_arbitrage.utils.logger import init_logger
-from cross_arbitrage.utils.symbol_mapping import SymbolMappingNotFoundError, get_common_symbol_from_exchange_symbol, init_symbol_mapping_from_file
+from cross_arbitrage.utils.symbol_mapping import SymbolMappingNotFoundError, get_common_symbol_from_exchange_symbol, init_symbol_mapping
 
 total_balance = {"wallet": 0, "dyn_margin": 0}
 
@@ -83,9 +83,7 @@ def main(env):
     config = get_config(file_path=config_files, env=env)
     logger.setLevel(getattr(logging, config.log.level.upper()))
     config.print()
-    init_symbol_mapping_from_file(
-        join(get_project_root(), "configs/common_config.json")
-    )
+    init_symbol_mapping(config.symbol_name_datas)
 
     init_globals(config)
 
