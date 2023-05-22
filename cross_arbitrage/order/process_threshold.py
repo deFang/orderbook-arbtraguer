@@ -203,7 +203,7 @@ def process_orderbook_stat(threshold: SymbolConfig, config: OrderConfig, symbol_
             'long_decrease_threshold': long_decrease_threshold,
             'short_increase_threshold': short_increase_threshold,
             'short_decrease_threshold': short_decrease_threshold,
-            'pre': threshold.copy(deep=True),
+            'pre': threshold.dict(),
         }
         rc.hset(f'order_threshold_dynamic:{symbol_info.makeonly_exchange_name}', symbol_info.symbol_name, orjson.dumps(data, default=_json_default))
     except Exception as ex:
