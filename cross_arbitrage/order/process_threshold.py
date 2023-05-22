@@ -152,9 +152,9 @@ def process_funding_rate(threshold: SymbolConfig, config: OrderConfig, symbol_in
             threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.6'), max_threshold)
         if (now % funding_interval) / (60 * 60) <= 4.0:
             threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.8'), max_threshold)
-        elif (now % funding_interval) / (60 * 60) <= 6:
+        elif (now % funding_interval) / (60 * 60) <= 6.0:
             threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), max_threshold)
-        elif (now % funding_interval) / (60 * 60) <= 7.933: # 56 minutes
+        elif (now % funding_interval) / (60 * 60) < 8.0: # 56 minutes
             threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1.2'), max_threshold)
     except Exception as ex:
         logging.error(f"process_funding_rate error: {ex}")
