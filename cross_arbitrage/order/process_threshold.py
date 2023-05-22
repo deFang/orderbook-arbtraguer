@@ -81,13 +81,14 @@ def _get_threshold_by_funding_delta(ex_name:str, threshold: SymbolConfig, config
     symbol = symbol_info.symbol_name
     long = threshold.long_threshold
     short = threshold.short_threshold
+    increase_percent = Decimal(1) if percent <= Decimal(1) else percent
     if funding_delta > 0:
         old_threshold = long.decrease_position_threshold
         long.decrease_position_threshold = max(long.decrease_position_threshold - funding_delta * percent, -max_threshold)
         long.cancel_decrease_position_threshold += (long.decrease_position_threshold - old_threshold)
 
         # tmp threshold is based on json config
-        tmp_threshold = Decimal(str(symbol_info.long_threshold_data.increase_position_threshold)) + (long.decrease_position_threshold - old_threshold)
+        tmp_threshold = Decimal(str(symbol_info.long_threshold_data.increase_position_threshold)) - funding_delta * increase_percent
         if tmp_threshold < long.increase_position_threshold:
             long.increase_position_threshold = tmp_threshold
             long.cancel_increase_position_threshold = Decimal(str(symbol_info.long_threshold_data.cancel_increase_position_threshold)) + \
@@ -100,7 +101,7 @@ def _get_threshold_by_funding_delta(ex_name:str, threshold: SymbolConfig, config
         short.cancel_decrease_position_threshold += (short.decrease_position_threshold - old_threshold)
 
         # tmp threshold is based on json config
-        tmp_threshold = Decimal(str(symbol_info.short_threshold_data.increase_position_threshold)) + (short.decrease_position_threshold - old_threshold)
+        tmp_threshold = Decimal(str(symbol_info.short_threshold_data.increase_position_threshold)) - funding_delta * increase_percent
         if tmp_threshold > short.increase_position_threshold:
             short.increase_position_threshold = tmp_threshold
             short.cancel_increase_position_threshold = Decimal(str(symbol_info.short_threshold_data.cancel_increase_position_threshold)) + \
@@ -114,11 +115,8 @@ def process_funding_rate(threshold: SymbolConfig, config: OrderConfig, symbol_in
     try:
         now = now_s()
         funding_interval = 8 * 60 * 60  # 8 hours
-        max_threshold = Decimal(str(0.001))
+        max_threshold = Decimal(str(0.01))
 
-        # ingore if not in last 3 hours of a funding interval
-        if (now % funding_interval) / (60 * 60) <= 5.0:
-            return threshold
         maker_exchange_name, taker_exchange_name = exchange_names
 
         # maker_position = get_position_status(rc, maker_exchange_name, symbol_info.symbol_name)
@@ -144,12 +142,15 @@ def process_funding_rate(threshold: SymbolConfig, config: OrderConfig, symbol_in
         funding_delta = Decimal(
             maker_funding_info['funding_rate']) - Decimal(taker_funding_info['funding_rate'])
 
-        if (now % funding_interval) / (60 * 60) <= 6.0:
-            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.33'), max_threshold)
-        elif (now % funding_interval) / (60 * 60) <= 7:
-            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.67'), max_threshold)
-        elif (now % funding_interval) / (60 * 60) <= 7.933: # 56 minutes
+        # ingore if not in last 3 hours of a funding interval
+        if (now % funding_interval) / (60 * 60) <= 2.0:
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.6'), max_threshold)
+        if (now % funding_interval) / (60 * 60) <= 4.0:
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.8'), max_threshold)
+        elif (now % funding_interval) / (60 * 60) <= 6:
             threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), max_threshold)
+        elif (now % funding_interval) / (60 * 60) <= 7.933: # 56 minutes
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1.2'), max_threshold)
     except Exception as ex:
         logging.error(f"process_funding_rate error: {ex}")
         logging.exception(ex)
