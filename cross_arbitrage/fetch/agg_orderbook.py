@@ -19,6 +19,7 @@ def agg_orderbooks_from_redis(
     symbol: str,
     exchanges: List[str],
     output_stream: str,
+    stream_size: int,
     ctx: CancelContext,
 ):
     origin_ob_keys = {ex: get_ob_storage_key(ex, symbol) for ex in exchanges}
@@ -60,7 +61,7 @@ def agg_orderbooks_from_redis(
             rc.xadd(
                 output_stream,
                 {symbol: json.dumps(order_book)},
-                maxlen=2000000,
+                maxlen=stream_size,
                 approximate=True,
             )
         except Exception as e:
@@ -74,6 +75,7 @@ def _loop(
     exchanges: List[str],
     notify_exchange: str,
     output_stream: str,
+    stream_size: int,
     ctx: CancelContext,
 ):
     rc = redis.Redis.from_url(redis_url)
@@ -81,7 +83,7 @@ def _loop(
     while not ctx.is_canceled():
         try:
             agg_orderbooks_from_redis(
-                rc, notify_exchange, symbol, exchanges, output_stream, ctx
+                rc, notify_exchange, symbol, exchanges, output_stream, stream_size, ctx
             )
         except Exception as e:
             logging.error(f"get a redis error: {type(e)}: {e}")
@@ -102,6 +104,7 @@ def agg_orderbook_mainloop(conf: FetchConfig, ctx: CancelContext):
                     exchanges,
                     exchange,
                     conf.redis.orderbook_stream,
+                    conf.redis.orderbook_stream_size,
                     ctx,
                 ),
                 name=f"agg_ob_{symbol}_{exchange}_thread",
@@ -123,6 +126,7 @@ def agg_orderbook_mainloop(conf: FetchConfig, ctx: CancelContext):
                         exchanges,
                         exchange,
                         conf.redis.orderbook_stream,
+                        conf.redis.orderbook_stream_size,
                         ctx,
                     ),
                     name=f"agg_ob_{symbol}_{exchange}_thread",

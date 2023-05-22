@@ -64,9 +64,11 @@ def print_symbol_infos(symbol:str, config: OrderConfig, rc:redis.Redis):
     ex_names = list(res.keys())
 
     print(f"funding_delta={float(res[ex_names[0]]['funding']['funding_rate']) - float(res[ex_names[1]]['funding']['funding_rate'])}")
+    print(f"----> {ex_names[0]}:")
     pprint(res[ex_names[0]]['funding'])
-    pprint(res[ex_names[1]]['funding'])
     pprint(res[ex_names[0]]['threshold'])
+    print(f"----> {ex_names[1]}:")
+    pprint(res[ex_names[1]]['funding'])
     pprint(res[ex_names[1]]['threshold'])
 
 
