@@ -170,8 +170,11 @@ class OrderConfig(BaseModel):
         logging.info(f"=> max_margin_ratio:        {self.max_used_margin}")
         logging.info(f"=> max_notional_per_order:  {self.default_max_notional_per_order}")
         logging.info(f"=> max_notional_per_symbol: {self.default_max_notional_per_symbol}")
-        for symbol_config in self.cross_arbitrage_symbol_datas:
-            logging.info(f"=> symbol config :      {symbol_config}")
+        if len(self.cross_arbitrage_symbol_datas) > 5:
+            logging.info(f"=> symbol config length:{len(self.cross_arbitrage_symbol_datas)}")
+        else:
+            for symbol_config in self.cross_arbitrage_symbol_datas:
+                logging.info(f"=> symbol config :      {symbol_config}")
 
     @classmethod
     def load(cls, obj):
