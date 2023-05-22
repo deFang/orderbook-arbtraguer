@@ -11,7 +11,7 @@ from cross_arbitrage.order.globals import get_order_status_stream_is_ready
 from cross_arbitrage.order.order_status import start_order_status_stream_mainloop
 from cross_arbitrage.order.position_status import PositionDirection, align_position_loop, refresh_position_loop
 import redis
-from cross_arbitrage.order.process_threshold import process_threshold_mainloop
+from cross_arbitrage.order.process_threshold import process_threshold_mainloop, is_threshold_ready
 
 from cross_arbitrage.utils.context import CancelContext
 from cross_arbitrage.utils.exchange import create_exchange
@@ -125,6 +125,10 @@ def order_loop(ctx: CancelContext, config: OrderConfig, thresholds: dict[str, Th
             ctx, rc, config.redis.orderbook_stream, last_id, 1000, 100)
         if not orderbooks:
             continue
+
+        if not is_threshold_ready():
+            continue
+        
         last_id = orderbooks[-1][0]
         signals = get_signal_from_orderbooks(
             rc, exchanges, config, thresholds, list(map(lambda x: x[1], orderbooks)))

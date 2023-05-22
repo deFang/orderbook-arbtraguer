@@ -17,6 +17,7 @@ from cross_arbitrage.order.config import SymbolConfig as OrderSymbolConfig
 from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from cross_arbitrage.utils.decorator import retry
 
+_threshold_ready = False
 
 def _json_default(obj):
     if isinstance(obj, Decimal):
@@ -26,6 +27,10 @@ def _json_default(obj):
 
 def get_threshold_key(exchange):
     return f"order:thresholds:{exchange}"
+
+
+def is_threshold_ready():
+    return _threshold_ready
 
 
 def init_symbol_config(symbol_info: OrderSymbolConfig) -> SymbolConfig:
@@ -328,6 +333,8 @@ def get_dataframe_from_orderbook(obs: list, exchanges: list[str]):
 
 
 def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
+    global _threshold_ready
+
     # init redis client
     rc = redis.Redis.from_url(
         config.redis.url, encoding="utf-8", decode_responses=True
@@ -382,4 +389,5 @@ def process_threshold_mainloop(ctx: CancelContext, config: OrderConfig):
                         f"save threshold error: {ex}, {threshold=}, {maker_exchange_name=}")
                     logging.exception(ex)
         del ob_df
+        _threshold_ready = True
         sleep_with_context(ctx, 2 * 60, interval=1.0)
