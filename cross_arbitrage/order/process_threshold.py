@@ -195,10 +195,10 @@ def process_orderbook_stat(threshold: SymbolConfig, config: OrderConfig, symbol_
 
     try:
         data = {
-            'bid_mu': bid_mu,
-            'bid_sig': bid_sig,
-            'ask_mu': ask_mu,
-            'ask_sig': ask_sig,
+            'bid_mu': str(bid_mu),
+            'bid_sig': str(bid_sig),
+            'ask_mu': str(ask_mu),
+            'ask_sig': str(ask_sig),
             'long_increase_threshold': long_increase_threshold,
             'long_decrease_threshold': long_decrease_threshold,
             'short_increase_threshold': short_increase_threshold,
