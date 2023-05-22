@@ -18,6 +18,12 @@ from cross_arbitrage.utils.context import CancelContext, sleep_with_context
 from cross_arbitrage.utils.decorator import retry
 
 
+def _json_default(obj):
+    if isinstance(obj, Decimal):
+        return str(obj)
+    raise TypeError
+
+
 def get_threshold_key(exchange):
     return f"order:thresholds:{exchange}"
 
@@ -186,6 +192,23 @@ def process_orderbook_stat(threshold: SymbolConfig, config: OrderConfig, symbol_
     long_decrease_threshold = Decimal(str(bid_mu - bid_sig * config.dyn_threshold.decrease_sigma))
     short_increase_threshold = Decimal(str(ask_mu + ask_sig * config.dyn_threshold.increase_sigma))
     short_decrease_threshold = Decimal(str(ask_mu + ask_sig * config.dyn_threshold.decrease_sigma))
+
+    try:
+        data = {
+            'bid_mu': bid_mu,
+            'bid_sig': bid_sig,
+            'ask_mu': ask_mu,
+            'ask_sig': ask_sig,
+            'long_increase_threshold': long_increase_threshold,
+            'long_decrease_threshold': long_decrease_threshold,
+            'short_increase_threshold': short_increase_threshold,
+            'short_decrease_threshold': short_decrease_threshold,
+            'pre': threshold.copy(deep=True),
+        }
+        rc.hset(f'order_threshold_dynamic:{symbol_info.makeonly_exchange_name}', symbol_info.symbol_name, orjson.dumps(data, default=_json_default))
+    except Exception as ex:
+        logging.error(f"process_orderbook_stat error: {ex}")
+        logging.exception(ex)
 
     if config.debug:
         logging.info(('\n\n[symbol: {}, maker_exchange: {}] bid_mu: {}, bid_sig: {}, ask_mu: {}, ask_sig: {},'
