@@ -118,7 +118,7 @@ def main(env):
     print(f"binance position: {len(d1.keys())}")
     print(f"okex positons   : {len(d2.keys())}")
 
-    for symbol in d1.keys():
+    for symbol in sorted(d1.keys()):
         p1 = d1[symbol]
         p2 = d2.get(symbol)
         if p2:
@@ -127,7 +127,7 @@ def main(env):
         else:
             print(f"- binance {p1['symbol']} {p1['_amount']} {p1['notional']} {round(p1['_avg_price'],4):<10} {p1['side']} {p1['unrealizedPnl']}")
 
-    for symbol in d2.keys():
+    for symbol in sorted(d2.keys()):
         p2 = d2[symbol]
         if not d1.get(symbol):
             print(f"- okex {p2['symbol']} {p2['_amount']} {p2['notional']} {round(p2['_avg_price'],4):<10} {p2['side']} {p2['unrealizedPnl']}")
