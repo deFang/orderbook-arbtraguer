@@ -189,6 +189,8 @@ def process_orderbook_stat(threshold: SymbolConfig, config: OrderConfig, symbol_
     
     df['delta_bid'] = df[par_maker('bid')] / df[par_taker('ask')] - 1
     df['delta_ask'] = df[par_maker('ask')] / df[par_taker('bid')] - 1
+    df = df.drop(columns=[par_maker('bid'), par_maker('ask'), par_taker('bid'), par_taker('ask')])
+    df = df[(df.shift(1)['trigger_exchange'] != df['trigger_exchange']) | (df['ts'] - df.shift(1)['ts'] > 100)]
 
     bid_mu = df['delta_bid'].mean()
     bid_sig = df['delta_bid'].std()
