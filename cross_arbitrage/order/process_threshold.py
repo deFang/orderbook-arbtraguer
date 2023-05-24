@@ -147,14 +147,14 @@ def process_funding_rate(threshold: SymbolConfig, config: OrderConfig, symbol_in
             maker_funding_info['funding_rate']) - Decimal(taker_funding_info['funding_rate'])
 
         # ingore if not in last 3 hours of a funding interval
-        if (now % funding_interval) / (60 * 60) <= 2.0:
-            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.6'), Decimal('0.6'), max_threshold)
         if (now % funding_interval) / (60 * 60) <= 4.0:
-            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.8'), Decimal('0.8'), max_threshold)
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.3'), Decimal('0.3'), max_threshold)
+        if (now % funding_interval) / (60 * 60) <= 5.0:
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.6'), Decimal('0.6'), max_threshold)
         elif (now % funding_interval) / (60 * 60) <= 6:
-            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), Decimal('1'), max_threshold)
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.8'), Decimal('0.8'), max_threshold)
         elif (now % funding_interval) / (60 * 60) <= 7.933: # 56 minutes
-            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1.2'), Decimal('1.2'), max_threshold)
+            threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), Decimal('1'), max_threshold)
         else:
             threshold = _get_threshold_by_funding_delta(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), Decimal('0'), max_threshold)
     except Exception as ex:
