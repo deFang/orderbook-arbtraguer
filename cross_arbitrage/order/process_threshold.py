@@ -174,13 +174,13 @@ def process_funding_rate(threshold: SymbolConfig, config: OrderConfig, symbol_in
         # ingore if not in last 3 hours of a funding interval
         if (now % funding_interval) / (60 * 60) <= 4.0:
             threshold = _update_threshold_by_funding_delta_to_reduce_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), Decimal('0.25'), max_threshold)
-            threshold = _update_threshold_by_funding_delta_to_add_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.25'), Decimal('0.25'), max_threshold)
+            threshold = _update_threshold_by_funding_delta_to_add_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.25'), Decimal('1'), max_threshold)
         elif (now % funding_interval) / (60 * 60) <= 5.0:
             threshold = _update_threshold_by_funding_delta_to_reduce_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), Decimal('0.5'), max_threshold)
-            threshold = _update_threshold_by_funding_delta_to_add_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.5'), Decimal('0.5'), max_threshold)
+            threshold = _update_threshold_by_funding_delta_to_add_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.5'), Decimal('1'), max_threshold)
         elif (now % funding_interval) / (60 * 60) <= 6:
             threshold = _update_threshold_by_funding_delta_to_reduce_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), Decimal('0.75'), max_threshold)
-            threshold = _update_threshold_by_funding_delta_to_add_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.75'), Decimal('0.75'), max_threshold)
+            threshold = _update_threshold_by_funding_delta_to_add_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('0.75'), Decimal('1'), max_threshold)
         elif (now % funding_interval) / (60 * 60) <= 7.933: # 56 minutes
             threshold = _update_threshold_by_funding_delta_to_reduce_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), Decimal('1'), max_threshold)
             threshold = _update_threshold_by_funding_delta_to_add_position(maker_exchange_name, threshold, config, symbol_info, funding_delta, Decimal('1'), Decimal('1'), max_threshold)
